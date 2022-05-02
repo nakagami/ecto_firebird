@@ -1,6 +1,6 @@
-defmodule EctoFirebird do
+defmodule Ecto.Adapters.Firebird do
   @moduledoc """
-  Documentation for EctoFirebird.
+  Documentation for Ecto.Adapters.Firebird.
   """
 
   @doc """
@@ -8,7 +8,7 @@ defmodule EctoFirebird do
 
   ## Examples
 
-      iex> EctoFirebird.hello()
+      iex> Ecto.Adapters.Firebird.hello()
       :world
 
   """

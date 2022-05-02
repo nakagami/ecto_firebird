@@ -1,8 +1,8 @@
 defmodule EctoFirebirdTest do
   use ExUnit.Case
-  doctest EctoFirebird
+  doctest Ecto.Adapters.Firebird
 
   test "greets the world" do
-    assert EctoFirebird.hello() == :world
+    assert Ecto.Adapters.Firebird.hello() == :world
   end
 end
