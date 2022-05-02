@@ -8,16 +8,27 @@ defmodule EctoFirebird.MixProject do
       app: :ecto_firebird,
       version: @version,
       elixir: "~> 1.9",
+      name: "Ecto Firebird",
+      description: "Firebird Ecto3 adapter",
       start_permanent: Mix.env() == :prod,
+      package: package(),
       docs: docs(),
       deps: deps()
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
       extra_applications: [:logger]
+    ]
+  end
+
+
+  defp package do
+    [
+      maintainers: ["Hajime Nakagami"],
+      licenses: ["Apache 2.0"],
+      links: %{"Github" => "https://github.com/nakagami/ecto_firebird"}
     ]
   end
 
