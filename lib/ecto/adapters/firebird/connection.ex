@@ -39,37 +39,29 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     @impl true
-    def to_constraints(%Firebirdex.Error{mysql: %{name: :ER_DUP_ENTRY}, message: message}, opts) do
-      case :binary.split(message, " for key ") do
-        [_, quoted] -> [unique: normalize_index_name(quoted, opts[:source])]
+    def to_constraints(%Firebirdex.Error{number: 335544349, reason: reason}, _opts) do
+      # unique key constraint
+      case :binary.split(reason, "\"") do
+        [_, name, _] -> [unique: name]
         _ -> []
       end
     end
-    def to_constraints(%Firebirdex.Error{mysql: %{name: name}, message: message}, _opts)
-        when name in [:ER_ROW_IS_REFERENCED_2, :ER_NO_REFERENCED_ROW_2] do
-      case :binary.split(message, [" CONSTRAINT ", " FOREIGN KEY "], [:global]) do
-        [_, quoted, _] -> [foreign_key: strip_quotes(quoted)]
+    def to_constraints(%Firebirdex.Error{number: 335544466, reason: reason}, _opts) do
+      # foreign key constraint
+      case :binary.split(reason, "\"") do
+        [_, name, _, _, _] -> [foreign_key: name]
+        _ -> []
+      end
+    end
+    def to_constraints(%Firebirdex.Error{number: 335544558, reason: reason}, _opts) do
+      # check constraint
+      case :binary.split(reason, "\"") do
+        [_, name, _, _, _] -> [check: name]
         _ -> []
       end
     end
     def to_constraints(_, _),
       do: []
-
-    defp strip_quotes(quoted) do
-      size = byte_size(quoted) - 2
-      <<_, unquoted::binary-size(size), _>> = quoted
-      unquoted
-    end
-
-    defp normalize_index_name(quoted, source) do
-      name = strip_quotes(quoted)
-
-      if source do
-        String.trim_leading(name, "#{source}.")
-      else
-        name
-      end
-    end
 
     ## Query
 
