@@ -1,5 +1,5 @@
 if Code.ensure_loaded?(Firebirdex) do
-  defmodule Ecto.Adapters.Firebirdex.Connection do
+  defmodule Ecto.Adapters.Firebird.Connection do
     @moduledoc false
     alias Ecto.Adapters.SQL
 
