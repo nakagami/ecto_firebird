@@ -977,11 +977,11 @@ if Code.ensure_loaded?(Firebirdex) do
       do: quote_name(Atom.to_string(name))
 
     defp quote_name(name) do
-      if String.contains?(name, "[") or String.contains?(name, "]") do
+      if String.contains?(name, "\"") do
         error!(nil, "bad field name #{inspect name}")
       end
 
-      [?[, name, ?]]
+      [?", name, ?"]
     end
 
     defp quote_names(names), do: intersperse_map(names, ?,, &quote_name/1)
