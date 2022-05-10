@@ -88,7 +88,7 @@ defmodule Ecto.Adapters.FirebirdTest do
     query = "0posts" |> select([:x]) |> plan()
     assert all(query) == ~s{SELECT t0."x" FROM "0posts" AS t0}
 
-    assert_raise Ecto.QueryError, ~r"Firebird does not support selecting all fields from `posts` without a schema", fn ->
+    assert_raise Ecto.QueryError, ~s{Firebird does not support selecting all fields from "posts" without a schema}, fn ->
       all from(p in "posts", select: p) |> plan()
     end
   end
@@ -448,20 +448,20 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "fragments" do
     query = Schema |> select([r], fragment("now")) |> plan()
-    assert all(query) == ~s{SELECT now FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT now FROM "schema" AS s0}
 
     query = Schema |> select([r], fragment("fun(?)", r)) |> plan()
-    assert all(query) == ~s{SELECT fun(s0) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT fun(s0) FROM "schema" AS s0}
 
     query = Schema |> select([r], fragment("lcase(?)", r.x)) |> plan()
-    assert all(query) == ~s{SELECT lcase(s0.`x`) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT lcase(s0."x") FROM "schema" AS s0}
 
     query = Schema |> select([r], r.x) |> where([], fragment("? = \"query\\?\"", ^10)) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 WHERE (? = \"query?\")}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (? = \"query?\")}
 
     value = 13
     query = Schema |> select([r], fragment("lcase(?, ?)", r.x, ^value)) |> plan()
-    assert all(query) == ~s{SELECT lcase(s0.`x`, ?) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT lcase(s0."x", ?) FROM "schema" AS s0}
 
     query = Schema |> select([], fragment(title: 2)) |> plan()
     assert_raise Ecto.QueryError, fn ->
@@ -471,86 +471,86 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "literals" do
     query = "schema" |> where(foo: true) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 WHERE (s0.`foo` = TRUE)}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 WHERE (s0."foo" = TRUE)}
 
     query = "schema" |> where(foo: false) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 WHERE (s0.`foo` = FALSE)}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 WHERE (s0."foo" = FALSE)}
 
     query = "schema" |> where(foo: "abc") |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 WHERE (s0.`foo` = 'abc')}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 WHERE (s0."foo" = 'abc')}
 
     query = "schema" |> where(foo: 123) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 WHERE (s0.`foo` = 123)}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 WHERE (s0."foo" = 123)}
 
     query = "schema" |> where(foo: 123.0) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 WHERE (s0.`foo` = (0 + 123.0))}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 WHERE (s0."foo" = (0 + 123.0))}
   end
 
   test "tagged type" do
     query = Schema |> select([], type(^"601d74e4-a8d3-4b6e-8365-eddb4c893327", Ecto.UUID)) |> plan()
-    assert all(query) == ~s{SELECT CAST(? AS binary(16)) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT CAST(? AS binary(16)) FROM "schema" AS s0}
   end
 
   test "string type" do
     query = Schema |> select([], type(^"test", :string)) |> plan()
-    assert all(query) == ~s{SELECT CAST(? AS char) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT CAST(? AS char) FROM "schema" AS s0}
   end
 
   test "json_extract_path" do
     query = Schema |> select([s], json_extract_path(s.meta, [0, 1])) |> plan()
-    assert all(query) == ~s{SELECT json_extract(s0.`meta`, '$[0][1]') FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT json_extract(s0."meta", '$[0][1]') FROM "schema" AS s0}
 
     query = Schema |> select([s], json_extract_path(s.meta, ["a", "b"])) |> plan()
-    assert all(query) == ~s{SELECT json_extract(s0.`meta`, '$."a"."b"') FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT json_extract(s0."meta", '$."a"."b"') FROM "schema" AS s0}
 
     query = Schema |> select([s], json_extract_path(s.meta, ["'a"])) |> plan()
-    assert all(query) == ~s{SELECT json_extract(s0.`meta`, '$."''a"') FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT json_extract(s0."meta", '$."''a"') FROM "schema" AS s0}
 
     query = Schema |> select([s], json_extract_path(s.meta, ["\"a"])) |> plan()
-    assert all(query) == ~s{SELECT json_extract(s0.`meta`, '$."\\\\"a"') FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT json_extract(s0."meta", '$."\\\\"a"') FROM "schema" AS s0}
   end
 
   test "nested expressions" do
     z = 123
     query = from(r in Schema, []) |> select([r], r.x > 0 and (r.y > ^(-z)) or true) |> plan()
-    assert all(query) == ~s{SELECT ((s0.`x` > 0) AND (s0.`y` > ?)) OR TRUE FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT ((s0."x" > 0) AND (s0."y" > ?)) OR TRUE FROM "schema" AS s0}
   end
 
   test "in expression" do
     query = Schema |> select([e], 1 in []) |> plan()
-    assert all(query) == ~s{SELECT false FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT false FROM "schema" AS s0}
 
     query = Schema |> select([e], 1 in [1,e.x,3]) |> plan()
-    assert all(query) == ~s{SELECT 1 IN (1,s0.`x`,3) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT 1 IN (1,s0."x",3) FROM "schema" AS s0}
 
     query = Schema |> select([e], 1 in ^[]) |> plan()
-    assert all(query) == ~s{SELECT false FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT false FROM "schema" AS s0}
 
     query = Schema |> select([e], 1 in ^[1, 2, 3]) |> plan()
-    assert all(query) == ~s{SELECT 1 IN (?,?,?) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT 1 IN (?,?,?) FROM "schema" AS s0}
 
     query = Schema |> select([e], 1 in [1, ^2, 3]) |> plan()
-    assert all(query) == ~s{SELECT 1 IN (1,?,3) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT 1 IN (1,?,3) FROM "schema" AS s0}
 
     query = Schema |> select([e], 1 in fragment("foo")) |> plan()
-    assert all(query) == ~s{SELECT 1 = ANY(foo) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT 1 = ANY(foo) FROM "schema" AS s0}
 
     query = Schema |> select([e], e.x == ^0 or e.x in ^[1, 2, 3] or e.x == ^4) |> plan()
-    assert all(query) == ~s{SELECT ((s0.`x` = ?) OR s0.`x` IN (?,?,?)) OR (s0.`x` = ?) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT ((s0."x" = ?) OR s0."x" IN (?,?,?)) OR (s0."x" = ?) FROM "schema" AS s0}
   end
 
   test "in subquery" do
     posts = subquery("posts" |> where(title: ^"hello") |> select([p], p.id))
     query = "comments" |> where([c], c.post_id in subquery(posts)) |> select([c], c.x) |> plan()
     assert all(query) ==
-           ~s{SELECT c0.`x` FROM `comments` AS c0 } <>
-           ~s{WHERE (c0.`post_id` IN (SELECT sp0.`id` FROM `posts` AS sp0 WHERE (sp0.`title` = ?)))}
+           ~s{SELECT c0."x" FROM "comments" AS c0 } <>
+           ~s{WHERE (c0."post_id" IN (SELECT sp0."id" FROM "posts" AS sp0 WHERE (sp0."title" = ?)))}
 
     posts = subquery("posts" |> where(title: parent_as(:comment).subtitle) |> select([p], p.id))
     query = "comments" |> from(as: :comment) |> where([c], c.post_id in subquery(posts)) |> select([c], c.x) |> plan()
     assert all(query) ==
-           ~s{SELECT c0.`x` FROM `comments` AS c0 } <>
-           ~s{WHERE (c0.`post_id` IN (SELECT sp0.`id` FROM `posts` AS sp0 WHERE (sp0.`title` = c0.`subtitle`)))}
+           ~s{SELECT c0."x" FROM "comments" AS c0 } <>
+           ~s{WHERE (c0."post_id" IN (SELECT sp0."id" FROM "posts" AS sp0 WHERE (sp0."title" = c0."subtitle")))}
   end
 
   test "having" do
@@ -563,24 +563,24 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "or_having" do
     query = Schema |> or_having([p], p.x == p.x) |> select([p], p.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 HAVING (s0.`x` = s0.`x`)}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 HAVING (s0."x" = s0."x")}
 
     query = Schema |> or_having([p], p.x == p.x) |> or_having([p], p.y == p.y) |> select([p], [p.y, p.x]) |> plan()
-    assert all(query) == ~s{SELECT s0.`y`, s0.`x` FROM `schema` AS s0 HAVING (s0.`x` = s0.`x`) OR (s0.`y` = s0.`y`)}
+    assert all(query) == ~s{SELECT s0."y", s0."x" FROM "schema" AS s0 HAVING (s0."x" = s0."x") OR (s0."y" = s0."y")}
   end
 
   test "group by" do
     query = Schema |> group_by([r], r.x) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 GROUP BY s0.`x`}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 GROUP BY s0."x"}
 
     query = Schema |> group_by([r], 2) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 GROUP BY 2}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 GROUP BY 2}
 
     query = Schema |> group_by([r], [r.x, r.y]) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 GROUP BY s0.`x`, s0.`y`}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 GROUP BY s0."x", s0."y"}
 
     query = Schema |> group_by([r], []) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0}
   end
 
   test "interpolated values" do
@@ -608,14 +608,14 @@ defmodule Ecto.Adapters.FirebirdTest do
             |> plan()
 
     result =
-      "WITH `cte1` AS (SELECT s0.`id` AS `id`, ? AS `smth` FROM `schema1` AS s0 WHERE (?)), " <>
-      "`cte2` AS (SELECT * FROM schema WHERE ?) " <>
-      "SELECT s0.`id`, ? FROM `schema` AS s0 INNER JOIN `schema2` AS s1 ON ? " <>
-      "INNER JOIN `schema2` AS s2 ON ? WHERE (?) AND (?) " <>
-      "GROUP BY ?, ? HAVING (?) AND (?) " <>
-      "UNION (SELECT s0.`id`, ? FROM `schema1` AS s0 WHERE (?)) " <>
-      "UNION ALL (SELECT s0.`id`, ? FROM `schema2` AS s0 WHERE (?)) " <>
-      "ORDER BY ? LIMIT ? OFFSET ?"
+      ~s{WITH "cte1" AS (SELECT s0."id" AS "id", ? AS "smth" FROM "schema1" AS s0 WHERE (?)), } <>
+      ~s{"cte2" AS (SELECT * FROM schema WHERE ?) } <>
+      ~s{SELECT s0."id", ? FROM "schema" AS s0 INNER JOIN "schema2" AS s1 ON ? } <>
+      ~s{INNER JOIN "schema2" AS s2 ON ? WHERE (?) AND (?) } <>
+      ~s{GROUP BY ?, ? HAVING (?) AND (?) } <>
+      ~s{UNION (SELECT s0."id", ? FROM "schema1" AS s0 WHERE (?)) } <>
+      ~s{UNION ALL (SELECT s0."id", ? FROM "schema2" AS s0 WHERE (?)) } <>
+      ~s{ORDER BY ? LIMIT ? OFFSET ?}
 
     assert all(query) == String.trim(result)
   end
@@ -627,8 +627,8 @@ defmodule Ecto.Adapters.FirebirdTest do
         select: true)
 
     result =
-      "SELECT TRUE FROM `schema` AS s0 " <>
-      "WHERE (s0.`start_time` = \"query?\")"
+      ~s{SELECT TRUE FROM "schema" AS s0 } <>
+      ~s{WHERE (s0."start_time" = \"query?\")}
 
     assert all(query) == String.trim(result)
   end
@@ -642,30 +642,30 @@ defmodule Ecto.Adapters.FirebirdTest do
   test "update all" do
     query = from(m in Schema, update: [set: [x: 0]]) |> plan(:update_all)
     assert update_all(query) ==
-           ~s{UPDATE `schema` AS s0 SET s0.`x` = 0}
+           ~s{UPDATE "schema" AS s0 SET s0."x" = 0}
 
     query = from(m in Schema, update: [set: [x: 0], inc: [y: 1, z: -3]]) |> plan(:update_all)
     assert update_all(query) ==
-           ~s{UPDATE `schema` AS s0 SET s0.`x` = 0, s0.`y` = s0.`y` + 1, s0.`z` = s0.`z` + -3}
+           ~s{UPDATE "schema" AS s0 SET s0."x" = 0, s0."y" = s0."y" + 1, s0."z" = s0."z" + -3}
 
     query = from(e in Schema, where: e.x == 123, update: [set: [x: 0]]) |> plan(:update_all)
     assert update_all(query) ==
-           ~s{UPDATE `schema` AS s0 SET s0.`x` = 0 WHERE (s0.`x` = 123)}
+           ~s{UPDATE "schema" AS s0 SET s0."x" = 0 WHERE (s0."x" = 123)}
 
     query = from(m in Schema, update: [set: [x: ^0]]) |> plan(:update_all)
     assert update_all(query) ==
-           ~s{UPDATE `schema` AS s0 SET s0.`x` = ?}
+           ~s{UPDATE "schema" AS s0 SET s0."x" = ?}
 
     query = Schema |> join(:inner, [p], q in Schema2, on: p.x == q.z)
                   |> update([_], set: [x: 0]) |> plan(:update_all)
     assert update_all(query) ==
-           ~s{UPDATE `schema` AS s0, `schema2` AS s1 SET s0.`x` = 0 WHERE (s0.`x` = s1.`z`)}
+           ~s{UPDATE "schema" AS s0, "schema2" AS s1 SET s0."x" = 0 WHERE (s0."x" = s1."z")}
 
     query = from(e in Schema, where: e.x == 123, update: [set: [x: 0]],
                              join: q in Schema2, on: e.x == q.z) |> plan(:update_all)
     assert update_all(query) ==
-           ~s{UPDATE `schema` AS s0, `schema2` AS s1 } <>
-           ~s{SET s0.`x` = 0 WHERE (s0.`x` = s1.`z`) AND (s0.`x` = 123)}
+           ~s{UPDATE "schema" AS s0, "schema2" AS s1 } <>
+           ~s{SET s0."x" = 0 WHERE (s0."x" = s1."z") AND (s0."x" = 123)}
 
     assert_raise ArgumentError, ":select is not supported in update_all by MySQL", fn ->
       query = from(e in Schema, where: e.x == 123, select: e.x)
@@ -675,28 +675,28 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "update all with prefix" do
     query = from(m in Schema, update: [set: [x: 0]]) |> Map.put(:prefix, "prefix") |> plan(:update_all)
-    assert update_all(query) == ~s{UPDATE `prefix`.`schema` AS s0 SET s0.`x` = 0}
+    assert update_all(query) == ~s{UPDATE "prefix"."schema" AS s0 SET s0."x" = 0}
 
     query = from(m in Schema, prefix: "first", update: [set: [x: 0]]) |> Map.put(:prefix, "prefix") |> plan(:update_all)
-    assert update_all(query) == ~s{UPDATE `first`.`schema` AS s0 SET s0.`x` = 0}
+    assert update_all(query) == ~s{UPDATE "first"."schema" AS s0 SET s0."x" = 0}
   end
 
   test "delete all" do
     query = Schema |> Queryable.to_query |> plan()
-    assert delete_all(query) == ~s{DELETE s0.* FROM `schema` AS s0}
+    assert delete_all(query) == ~s{DELETE s0.* FROM "schema" AS s0}
 
     query = from(e in Schema, where: e.x == 123) |> plan()
     assert delete_all(query) ==
-           ~s{DELETE s0.* FROM `schema` AS s0 WHERE (s0.`x` = 123)}
+           ~s{DELETE s0.* FROM "schema" AS s0 WHERE (s0."x" = 123)}
 
     query = Schema |> join(:inner, [p], q in Schema2, on: p.x == q.z) |> plan()
     assert delete_all(query) ==
-           ~s{DELETE s0.* FROM `schema` AS s0 INNER JOIN `schema2` AS s1 ON s0.`x` = s1.`z`}
+           ~s{DELETE s0.* FROM "schema" AS s0 INNER JOIN "schema2" AS s1 ON s0."x" = s1."z"}
 
     query = from(e in Schema, where: e.x == 123, join: q in Schema2, on: e.x == q.z) |> plan()
     assert delete_all(query) ==
-           ~s{DELETE s0.* FROM `schema` AS s0 } <>
-           ~s{INNER JOIN `schema2` AS s1 ON s0.`x` = s1.`z` WHERE (s0.`x` = 123)}
+           ~s{DELETE s0.* FROM "schema" AS s0 } <>
+           ~s{INNER JOIN "schema2" AS s1 ON s0."x" = s1."z" WHERE (s0."x" = 123)}
 
     assert_raise ArgumentError, ":select is not supported in delete_all by MySQL", fn ->
       query = from(e in Schema, where: e.x == 123, select: e.x)
@@ -706,10 +706,10 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "delete all with prefix" do
     query = Schema |> Queryable.to_query |> Map.put(:prefix, "prefix") |> plan()
-    assert delete_all(query) == ~s{DELETE s0.* FROM `prefix`.`schema` AS s0}
+    assert delete_all(query) == ~s{DELETE s0.* FROM "prefix"."schema" AS s0}
 
     query = Schema |> from(prefix: "first") |> Map.put(:prefix, "prefix") |> plan()
-    assert delete_all(query) == ~s{DELETE s0.* FROM `first`.`schema` AS s0}
+    assert delete_all(query) == ~s{DELETE s0.* FROM "first"."schema" AS s0}
   end
 
   ## Partitions and windows
@@ -721,7 +721,7 @@ defmodule Ecto.Adapters.FirebirdTest do
               |> windows([r], w: [partition_by: r.x])
               |> plan
 
-      assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 WINDOW `w` AS (PARTITION BY s0.`x`)}
+      assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WINDOW "w" AS (PARTITION BY s0."x")}
     end
 
     test "two windows" do
@@ -729,7 +729,7 @@ defmodule Ecto.Adapters.FirebirdTest do
               |> select([r], r.x)
               |> windows([r], w1: [partition_by: r.x], w2: [partition_by: r.y])
               |> plan()
-      assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 WINDOW `w1` AS (PARTITION BY s0.`x`), `w2` AS (PARTITION BY s0.`y`)}
+      assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WINDOW "w1" AS (PARTITION BY s0."x"), "w2" AS (PARTITION BY s0."y")}
     end
 
     test "count over window" do
@@ -737,35 +737,35 @@ defmodule Ecto.Adapters.FirebirdTest do
               |> windows([r], w: [partition_by: r.x])
               |> select([r], count(r.x) |> over(:w))
               |> plan()
-      assert all(query) == ~s{SELECT count(s0.`x`) OVER `w` FROM `schema` AS s0 WINDOW `w` AS (PARTITION BY s0.`x`)}
+      assert all(query) == ~s{SELECT count(s0."x") OVER "w" FROM "schema" AS s0 WINDOW "w" AS (PARTITION BY s0."x")}
     end
 
     test "count over all" do
       query = Schema
               |> select([r], count(r.x) |> over)
               |> plan()
-      assert all(query) == ~s{SELECT count(s0.`x`) OVER () FROM `schema` AS s0}
+      assert all(query) == ~s{SELECT count(s0."x") OVER () FROM "schema" AS s0}
     end
 
     test "row_number over all" do
       query = Schema
               |> select(row_number |> over)
               |> plan()
-      assert all(query) == ~s{SELECT row_number() OVER () FROM `schema` AS s0}
+      assert all(query) == ~s{SELECT row_number() OVER () FROM "schema" AS s0}
     end
 
     test "nth_value over all" do
       query = Schema
               |> select([r], nth_value(r.x, 42) |> over)
               |> plan()
-      assert all(query) == ~s{SELECT nth_value(s0.`x`, 42) OVER () FROM `schema` AS s0}
+      assert all(query) == ~s{SELECT nth_value(s0."x", 42) OVER () FROM "schema" AS s0}
     end
 
     test "lag/2 over all" do
       query = Schema
               |> select([r], lag(r.x, 42) |> over)
               |> plan()
-      assert all(query) == ~s{SELECT lag(s0.`x`, 42) OVER () FROM `schema` AS s0}
+      assert all(query) == ~s{SELECT lag(s0."x", 42) OVER () FROM "schema" AS s0}
     end
 
     test "custom aggregation over all" do
