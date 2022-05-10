@@ -772,7 +772,7 @@ defmodule Ecto.Adapters.FirebirdTest do
       query = Schema
               |> select([r], fragment("custom_function(?)", r.x) |> over)
               |> plan()
-      assert all(query) == ~s{SELECT custom_function(s0.`x`) OVER () FROM `schema` AS s0}
+      assert all(query) == ~s{SELECT custom_function(s0."x") OVER () FROM "schema" AS s0}
     end
 
     test "partition by and order by on window" do
@@ -780,7 +780,7 @@ defmodule Ecto.Adapters.FirebirdTest do
               |> windows([r], w: [partition_by: [r.x, r.z], order_by: r.x])
               |> select([r], r.x)
               |> plan()
-      assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 WINDOW `w` AS (PARTITION BY s0.`x`, s0.`z` ORDER BY s0.`x`)}
+      assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WINDOW "w" AS (PARTITION BY s0."x", s0."z" ORDER BY s0."x")}
     end
 
     test "partition by and order by on over" do
@@ -788,7 +788,7 @@ defmodule Ecto.Adapters.FirebirdTest do
               |> select([r], count(r.x) |> over(partition_by: [r.x, r.z], order_by: r.x))
 
       query = query |> plan()
-      assert all(query) == ~s{SELECT count(s0.`x`) OVER (PARTITION BY s0.`x`, s0.`z` ORDER BY s0.`x`) FROM `schema` AS s0}
+      assert all(query) == ~s{SELECT count(s0."x") OVER (PARTITION BY s0."x", s0."z" ORDER BY s0."x") FROM "schema" AS s0}
     end
 
     test "frame clause" do
@@ -796,7 +796,7 @@ defmodule Ecto.Adapters.FirebirdTest do
               |> select([r], count(r.x) |> over(partition_by: [r.x, r.z], order_by: r.x, frame: fragment("ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING")))
 
       query = query |> plan()
-      assert all(query) == ~s{SELECT count(s0.`x`) OVER (PARTITION BY s0.`x`, s0.`z` ORDER BY s0.`x` ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) FROM `schema` AS s0}
+      assert all(query) == ~s{SELECT count(s0."x") OVER (PARTITION BY s0."x", s0."z" ORDER BY s0."x" ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) FROM "schema" AS s0}
     end
   end
 
@@ -805,13 +805,13 @@ defmodule Ecto.Adapters.FirebirdTest do
   test "join" do
     query = Schema |> join(:inner, [p], q in Schema2, on: p.x == q.z) |> select([], true) |> plan()
     assert all(query) ==
-           ~s{SELECT TRUE FROM `schema` AS s0 INNER JOIN `schema2` AS s1 ON s0.`x` = s1.`z`}
+           ~s{SELECT TRUE FROM "schema" AS s0 INNER JOIN "schema2" AS s1 ON s0."x" = s1."z"}
 
     query = Schema |> join(:inner, [p], q in Schema2, on: p.x == q.z)
                   |> join(:inner, [], Schema, on: true) |> select([], true) |> plan()
     assert all(query) ==
-           ~s{SELECT TRUE FROM `schema` AS s0 INNER JOIN `schema2` AS s1 ON s0.`x` = s1.`z` } <>
-           ~s{INNER JOIN `schema` AS s2 ON TRUE}
+           ~s{SELECT TRUE FROM "schema" AS s0 INNER JOIN "schema2" AS s1 ON s0."x" = s1."z" } <>
+           ~s{INNER JOIN "schema" AS s2 ON TRUE}
   end
 
   test "join with hints" do
@@ -819,49 +819,49 @@ defmodule Ecto.Adapters.FirebirdTest do
            |> join(:inner, [p], q in Schema2, hints: ["USE INDEX FOO", "USE INDEX BAR"])
            |> select([], true)
            |> plan()
-           |> all() == ~s{SELECT TRUE FROM `schema` AS s0 INNER JOIN `schema2` AS s1 USE INDEX FOO USE INDEX BAR ON TRUE}
+           |> all() == ~s{SELECT TRUE FROM "schema" AS s0 INNER JOIN "schema2" AS s1 USE INDEX FOO USE INDEX BAR ON TRUE}
   end
 
   test "join with nothing bound" do
     query = Schema |> join(:inner, [], q in Schema2, on: q.z == q.z) |> select([], true) |> plan()
     assert all(query) ==
-           ~s{SELECT TRUE FROM `schema` AS s0 INNER JOIN `schema2` AS s1 ON s1.`z` = s1.`z`}
+           ~s{SELECT TRUE FROM "schema" AS s0 INNER JOIN "schema2" AS s1 ON s1."z" = s1."z"}
   end
 
   test "join without schema" do
     query = "posts" |> join(:inner, [p], q in "comments", on: p.x == q.z) |> select([], true) |> plan()
     assert all(query) ==
-           ~s{SELECT TRUE FROM `posts` AS p0 INNER JOIN `comments` AS c1 ON p0.`x` = c1.`z`}
+           ~s{SELECT TRUE FROM "posts" AS p0 INNER JOIN "comments" AS c1 ON p0."x" = c1."z"}
   end
 
   test "join with subquery" do
     posts = subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, y: r.y}))
     query = "comments" |> join(:inner, [c], p in subquery(posts), on: true) |> select([_, p], p.x) |> plan()
     assert all(query) ==
-           ~s{SELECT s1.`x` FROM `comments` AS c0 } <>
-           ~s{INNER JOIN (SELECT sp0.`x` AS `x`, sp0.`y` AS `y` FROM `posts` AS sp0 WHERE (sp0.`title` = ?)) AS s1 ON TRUE}
+           ~s{SELECT s1."x" FROM "comments" AS c0 } <>
+           ~s{INNER JOIN (SELECT sp0."x" AS "x", sp0."y" AS "y" FROM "posts" AS sp0 WHERE (sp0."title" = ?)) AS s1 ON TRUE}
 
     posts = subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, z: r.y}))
     query = "comments" |> join(:inner, [c], p in subquery(posts), on: true) |> select([_, p], p) |> plan()
     assert all(query) ==
-           ~s{SELECT s1.`x`, s1.`z` FROM `comments` AS c0 } <>
-           ~s{INNER JOIN (SELECT sp0.`x` AS `x`, sp0.`y` AS `z` FROM `posts` AS sp0 WHERE (sp0.`title` = ?)) AS s1 ON TRUE}
+           ~s{SELECT s1."x", s1."z" FROM "comments" AS c0 } <>
+           ~s{INNER JOIN (SELECT sp0."x" AS "x", sp0."y" AS "z" FROM "posts" AS sp0 WHERE (sp0."title" = ?)) AS s1 ON TRUE}
 
     posts = subquery("posts" |> where(title: parent_as(:comment).subtitle) |> select([r], r.title))
     query = "comments" |> from(as: :comment) |> join(:inner, [c], p in subquery(posts)) |> select([_, p], p) |> plan()
     assert all(query) ==
-           "SELECT s1.`title` FROM `comments` AS c0 " <>
-           "INNER JOIN (SELECT sp0.`title` AS `title` FROM `posts` AS sp0 WHERE (sp0.`title` = c0.`subtitle`)) AS s1 ON TRUE"
+           ~s{SELECT s1."title" FROM "comments" AS c0 } <>
+           ~s{INNER JOIN (SELECT sp0."title" AS "title" FROM "posts" AS sp0 WHERE (sp0."title" = c0."subtitle")) AS s1 ON TRUE}
   end
 
   test "join with prefix" do
     query = Schema |> join(:inner, [p], q in Schema2, on: p.x == q.z) |> select([], true) |> Map.put(:prefix, "prefix") |> plan()
     assert all(query) ==
-           ~s{SELECT TRUE FROM `prefix`.`schema` AS s0 INNER JOIN `prefix`.`schema2` AS s1 ON s0.`x` = s1.`z`}
+           ~s{SELECT TRUE FROM "prefix"."schema" AS s0 INNER JOIN "prefix"."schema2" AS s1 ON s0."x" = s1."z"}
 
     query = Schema |> from(prefix: "first") |> join(:inner, [p], q in Schema2, on: p.x == q.z, prefix: "second") |> select([], true) |> Map.put(:prefix, "prefix") |> plan()
     assert all(query) ==
-           ~s{SELECT TRUE FROM `first`.`schema` AS s0 INNER JOIN `second`.`schema2` AS s1 ON s0.`x` = s1.`z`}
+           ~s{SELECT TRUE FROM "first"."schema" AS s0 INNER JOIN "second"."schema2" AS s1 ON s0."x" = s1."z"}
   end
 
   test "join with fragment" do
@@ -871,9 +871,9 @@ defmodule Ecto.Adapters.FirebirdTest do
             |> where([p], p.id > 0 and p.id < ^100)
             |> plan()
     assert all(query) ==
-           ~s{SELECT s0.`id`, ? FROM `schema` AS s0 INNER JOIN } <>
-           ~s{(SELECT * FROM schema2 AS s2 WHERE s2.id = s0.`x` AND s2.field = ?) AS f1 ON TRUE } <>
-           ~s{WHERE ((s0.`id` > 0) AND (s0.`id` < ?))}
+           ~s{SELECT s0."id", ? FROM "schema" AS s0 INNER JOIN } <>
+           ~s{(SELECT * FROM schema2 AS s2 WHERE s2.id = s0."x" AND s2.field = ?) AS f1 ON TRUE } <>
+           ~s{WHERE ((s0."id" > 0) AND (s0."id" < ?))}
   end
 
   test "join with fragment and on defined" do
@@ -882,21 +882,21 @@ defmodule Ecto.Adapters.FirebirdTest do
             |> select([p], {p.id, ^0})
             |> plan()
     assert all(query) ==
-           ~s{SELECT s0.`id`, ? FROM `schema` AS s0 INNER JOIN } <>
-           ~s{(SELECT * FROM schema2) AS f1 ON f1.`id` = s0.`id`}
+           ~s{SELECT s0."id", ? FROM "schema" AS s0 INNER JOIN } <>
+           ~s{(SELECT * FROM schema2) AS f1 ON f1."id" = s0."id"}
   end
 
   test "join with query interpolation" do
     inner = Ecto.Queryable.to_query(Schema2)
     query = from(p in Schema, left_join: c in ^inner, select: {p.id, c.id}) |> plan()
     assert all(query) ==
-           "SELECT s0.`id`, s1.`id` FROM `schema` AS s0 LEFT OUTER JOIN `schema2` AS s1 ON TRUE"
+           ~s{SELECT s0."id", s1."id" FROM "schema" AS s0 LEFT OUTER JOIN "schema2" AS s1 ON TRUE}
   end
 
   test "cross join" do
     query = from(p in Schema, cross_join: c in Schema2, select: {p.id, c.id}) |> plan()
     assert all(query) ==
-           "SELECT s0.`id`, s1.`id` FROM `schema` AS s0 CROSS JOIN `schema2` AS s1"
+           ~s{SELECT s0."id", s1."id" FROM "schema" AS s0 CROSS JOIN "schema2" AS s1}
   end
 
   test "join produces correct bindings" do
@@ -904,7 +904,7 @@ defmodule Ecto.Adapters.FirebirdTest do
     query = from(p in query, join: c in Schema2, on: true, select: {p.id, c.id})
     query = plan(query)
     assert all(query) ==
-           "SELECT s0.`id`, s2.`id` FROM `schema` AS s0 INNER JOIN `schema2` AS s1 ON TRUE INNER JOIN `schema2` AS s2 ON TRUE"
+           ~s{SELECT s0."id", s2."id" FROM "schema" AS s0 INNER JOIN "schema2" AS s1 ON TRUE INNER JOIN "schema2" AS s2 ON TRUE}
   end
 
   ## Associations
@@ -912,35 +912,35 @@ defmodule Ecto.Adapters.FirebirdTest do
   test "association join belongs_to" do
     query = Schema2 |> join(:inner, [c], p in assoc(c, :post)) |> select([], true) |> plan()
     assert all(query) ==
-           "SELECT TRUE FROM `schema2` AS s0 INNER JOIN `schema` AS s1 ON s1.`x` = s0.`z`"
+           ~s{SELECT TRUE FROM "schema2" AS s0 INNER JOIN "schema" AS s1 ON s1."x" = s0."z"}
   end
 
   test "association join has_many" do
     query = Schema |> join(:inner, [p], c in assoc(p, :comments)) |> select([], true) |> plan()
     assert all(query) ==
-           "SELECT TRUE FROM `schema` AS s0 INNER JOIN `schema2` AS s1 ON s1.`z` = s0.`x`"
+           ~s{SELECT TRUE FROM "schema" AS s0 INNER JOIN "schema2" AS s1 ON s1."z" = s0."x"}
   end
 
   test "association join has_one" do
     query = Schema |> join(:inner, [p], pp in assoc(p, :permalink)) |> select([], true) |> plan()
     assert all(query) ==
-           "SELECT TRUE FROM `schema` AS s0 INNER JOIN `schema3` AS s1 ON s1.`id` = s0.`y`"
+           ~s{SELECT TRUE FROM "schema" AS s0 INNER JOIN "schema3" AS s1 ON s1."id" = s0."y"}
   end
 
   # Schema based
 
   test "insert" do
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {:raise, [], []}, [])
-    assert query == ~s{INSERT INTO `schema` (`x`,`y`) VALUES (?,?)}
+    assert query == ~s{INSERT INTO "schema" ("x","y") VALUES (?,?)}
 
     query = insert(nil, "schema", [:x, :y], [[:x, :y], [nil, :y]], {:raise, [], []}, [])
-    assert query == ~s{INSERT INTO `schema` (`x`,`y`) VALUES (?,?),(DEFAULT,?)}
+    assert query == ~s{INSERT INTO "schema" ("x","y") VALUES (?,?),(DEFAULT,?)}
 
     query = insert(nil, "schema", [], [[]], {:raise, [], []}, [])
-    assert query == ~s{INSERT INTO `schema` () VALUES ()}
+    assert query == ~s{INSERT INTO "schema" () VALUES ()}
 
     query = insert("prefix", "schema", [], [[]], {:raise, [], []}, [])
-    assert query == ~s{INSERT INTO `prefix`.`schema` () VALUES ()}
+    assert query == ~s{INSERT INTO "prefix"."schema" () VALUES ()}
 
     assert_raise ArgumentError, ":returning is not supported in insert/insert_all by MySQL", fn ->
       insert(nil, "schema", [:x, :y], [[:x, :y]], {:raise, [], []}, [:x, :y])
@@ -953,10 +953,10 @@ defmodule Ecto.Adapters.FirebirdTest do
 
     update = from("schema", update: [set: [z: "foo"]]) |> plan(:update_all)
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {update, [], []}, [])
-    assert query == ~s{INSERT INTO `schema` (`x`,`y`) VALUES (?,?) ON DUPLICATE KEY UPDATE `z` = 'foo'}
+    assert query == ~s{INSERT INTO "schema" ("x","y") VALUES (?,?) ON DUPLICATE KEY UPDATE "z" = 'foo'}
 
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {[:x, :y], [], []}, [])
-    assert query == ~s{INSERT INTO `schema` (`x`,`y`) VALUES (?,?) ON DUPLICATE KEY UPDATE `x` = VALUES(`x`),`y` = VALUES(`y`)}
+    assert query == ~s{INSERT INTO "schema" ("x","y") VALUES (?,?) ON DUPLICATE KEY UPDATE "x" = VALUES("x"),"y" = VALUES("y")}
 
     assert_raise ArgumentError, "The :conflict_target option is not supported in insert/insert_all by MySQL", fn ->
       insert(nil, "schema", [:x, :y], [[:x, :y]], {[:x, :y], [], [:x]}, [])
@@ -976,24 +976,24 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "update" do
     query = update(nil, "schema", [:id], [x: 1, y: 2], [])
-    assert query == ~s{UPDATE `schema` SET `id` = ? WHERE `x` = ? AND `y` = ?}
+    assert query == ~s{UPDATE "schema" SET "id" = ? WHERE "x" = ? AND "y" = ?}
 
     query = update("prefix", "schema", [:id], [x: 1, y: 2], [])
-    assert query == ~s{UPDATE `prefix`.`schema` SET `id` = ? WHERE `x` = ? AND `y` = ?}
+    assert query == ~s{UPDATE "prefix"."schema" SET "id" = ? WHERE "x" = ? AND "y" = ?}
 
     query = update("prefix", "schema", [:id], [x: 1, y: nil], [])
-    assert query == ~s{UPDATE `prefix`.`schema` SET `id` = ? WHERE `x` = ? AND `y` IS NULL}
+    assert query == ~s{UPDATE "prefix"."schema" SET "id" = ? WHERE "x" = ? AND "y" IS NULL}
   end
 
   test "delete" do
     query = delete(nil, "schema", [x: 1, y: 2], [])
-    assert query == ~s{DELETE FROM `schema` WHERE `x` = ? AND `y` = ?}
+    assert query == ~s{DELETE FROM "schema" WHERE "x" = ? AND "y" = ?}
 
     query = delete("prefix", "schema", [x: 1, y: 2], [])
-    assert query == ~s{DELETE FROM `prefix`.`schema` WHERE `x` = ? AND `y` = ?}
+    assert query == ~s{DELETE FROM "prefix"."schema" WHERE "x" = ? AND "y" = ?}
 
     query = delete(nil, "schema", [x: nil, y: 1], [])
-    assert query == ~s{DELETE FROM `schema` WHERE `x` IS NULL AND `y` = ?}
+    assert query == ~s{DELETE FROM "schema" WHERE "x" IS NULL AND "y" = ?}
   end
 
   # DDL
@@ -1022,7 +1022,7 @@ defmodule Ecto.Adapters.FirebirdTest do
     "on_hand" integer DEFAULT 0 NULL,
     "likes" smallint unsigned DEFAULT 0 NOT NULL,
     "published_at" datetime(6) NULL,
-    "is_active" boolean DEFAULT true) ENGINE = INNODB
+    "is_active" boolean DEFAULT true)
     """ |> remove_newlines]
   end
 
@@ -1030,7 +1030,7 @@ defmodule Ecto.Adapters.FirebirdTest do
     create = {:create, table(:posts), []}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts` ENGINE = INNODB
+    CREATE TABLE "posts"
     """ |> remove_newlines]
   end
 
@@ -1039,8 +1039,8 @@ defmodule Ecto.Adapters.FirebirdTest do
                [{:add, :category_0, %Reference{table: :categories}, []}]}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `foo`.`posts` (`category_0` BIGINT UNSIGNED,
-    CONSTRAINT `posts_category_0_fkey` FOREIGN KEY (`category_0`) REFERENCES `foo`.`categories`(`id`)) ENGINE = INNODB
+    CREATE TABLE "foo"."posts" ("category_0" BIGINT UNSIGNED,
+    CONSTRAINT "posts_category_0_fkey" FOREIGN KEY ("category_0") REFERENCES "foo"."categories"("id"))
     """ |> remove_newlines]
   end
 
@@ -1048,7 +1048,7 @@ defmodule Ecto.Adapters.FirebirdTest do
     create = {:create, table(:posts, engine: :myisam),
                [{:add, :id, :serial, [primary_key: true]}]}
     assert execute_ddl(create) ==
-           [~s|CREATE TABLE `posts` (`id` bigint unsigned not null auto_increment, PRIMARY KEY (`id`)) ENGINE = MYISAM|]
+           [~s|CREATE TABLE "posts" ("id" bigint unsigned not null auto_increment, PRIMARY KEY ("id")) ENGINE = MYISAM|]
   end
 
   test "create table with references" do
@@ -1063,22 +1063,22 @@ defmodule Ecto.Adapters.FirebirdTest do
                 {:add, :category_6, %Reference{table: :categories, with: [here: :there], on_delete: :nilify_all}, []}]}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts` (`id` bigint unsigned not null auto_increment,
-    `category_0` BIGINT UNSIGNED,
-    CONSTRAINT `posts_category_0_fkey` FOREIGN KEY (`category_0`) REFERENCES `categories`(`id`),
-    `category_1` BIGINT UNSIGNED,
-    CONSTRAINT `foo_bar` FOREIGN KEY (`category_1`) REFERENCES `categories`(`id`),
-    `category_2` BIGINT UNSIGNED,
-    CONSTRAINT `posts_category_2_fkey` FOREIGN KEY (`category_2`) REFERENCES `categories`(`id`),
-    `category_3` BIGINT UNSIGNED NOT NULL,
-    CONSTRAINT `posts_category_3_fkey` FOREIGN KEY (`category_3`) REFERENCES `categories`(`id`) ON DELETE CASCADE,
-    `category_4` BIGINT UNSIGNED,
-    CONSTRAINT `posts_category_4_fkey` FOREIGN KEY (`category_4`) REFERENCES `categories`(`id`) ON DELETE SET NULL,
-    `category_5` BIGINT UNSIGNED,
-    CONSTRAINT `posts_category_5_fkey` FOREIGN KEY (`category_5`) REFERENCES `foo`.`categories`(`id`) ON DELETE SET NULL,
-    `category_6` BIGINT UNSIGNED,
-    CONSTRAINT `posts_category_6_fkey` FOREIGN KEY (`category_6`,`here`) REFERENCES `categories`(`id`,`there`) ON DELETE SET NULL,
-    PRIMARY KEY (`id`)) ENGINE = INNODB
+    CREATE TABLE "posts" ("id" bigint unsigned not null auto_increment,
+    "category_0" BIGINT UNSIGNED,
+    CONSTRAINT "posts_category_0_fkey" FOREIGN KEY ("category_0") REFERENCES "categories"("id"),
+    "category_1" BIGINT UNSIGNED,
+    CONSTRAINT "foo_bar" FOREIGN KEY ("category_1") REFERENCES "categories"("id"),
+    "category_2" BIGINT UNSIGNED,
+    CONSTRAINT "posts_category_2_fkey" FOREIGN KEY ("category_2") REFERENCES "categories"("id"),
+    "category_3" BIGINT UNSIGNED NOT NULL,
+    CONSTRAINT "posts_category_3_fkey" FOREIGN KEY ("category_3") REFERENCES "categories"("id") ON DELETE CASCADE,
+    "category_4" BIGINT UNSIGNED,
+    CONSTRAINT "posts_category_4_fkey" FOREIGN KEY ("category_4") REFERENCES "categories"("id") ON DELETE SET NULL,
+    "category_5" BIGINT UNSIGNED,
+    CONSTRAINT "posts_category_5_fkey" FOREIGN KEY ("category_5") REFERENCES "foo"."categories"("id") ON DELETE SET NULL,
+    "category_6" BIGINT UNSIGNED,
+    CONSTRAINT "posts_category_6_fkey" FOREIGN KEY ("category_6","here") REFERENCES "categories"("id","there") ON DELETE SET NULL,
+    PRIMARY KEY ("id"))
     """ |> remove_newlines]
   end
 
@@ -1087,7 +1087,7 @@ defmodule Ecto.Adapters.FirebirdTest do
                [{:add, :id, :serial, [primary_key: true]},
                 {:add, :created_at, :datetime, []}]}
     assert execute_ddl(create) ==
-           [~s|CREATE TABLE `posts` (`id` bigint unsigned not null auto_increment, `created_at` datetime, PRIMARY KEY (`id`)) ENGINE = INNODB WITH FOO=BAR|]
+           [~s|CREATE TABLE "posts" ("id" bigint unsigned not null auto_increment, "created_at" datetime, PRIMARY KEY ("id")) WITH FOO=BAR|]
   end
 
   test "create table with both engine and options" do
@@ -1095,7 +1095,7 @@ defmodule Ecto.Adapters.FirebirdTest do
                [{:add, :id, :serial, [primary_key: true]},
                 {:add, :created_at, :datetime, []}]}
     assert execute_ddl(create) ==
-           [~s|CREATE TABLE `posts` (`id` bigint unsigned not null auto_increment, `created_at` datetime, PRIMARY KEY (`id`)) ENGINE = MYISAM WITH FOO=BAR|]
+           [~s|CREATE TABLE "posts" ("id" bigint unsigned not null auto_increment, "created_at" datetime, PRIMARY KEY ("id")) ENGINE = MYISAM WITH FOO=BAR|]
   end
 
   test "create table with composite key" do
@@ -1105,7 +1105,7 @@ defmodule Ecto.Adapters.FirebirdTest do
                 {:add, :name, :string, []}]}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts` (`a` integer, `b` integer, `name` varchar(255), PRIMARY KEY (`a`,`b`)) ENGINE = INNODB
+    CREATE TABLE "posts" ("a" integer, "b" integer, "name" varchar(255), PRIMARY KEY ("a","b"))
     """ |> remove_newlines]
   end
 
@@ -1117,7 +1117,7 @@ defmodule Ecto.Adapters.FirebirdTest do
             }
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts` (`a` json DEFAULT ('{\"baz\":\"boom\",\"foo\":\"bar\"}')) ENGINE = INNODB
+    CREATE TABLE "posts" ("a" json DEFAULT ('{\"baz\":\"boom\",\"foo\":\"bar\"}'))
     """ |> remove_newlines]
   end
 
@@ -1127,10 +1127,9 @@ defmodule Ecto.Adapters.FirebirdTest do
                {:add, :submitted_at, :time, []}]}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts`
-    (`published_at` time,
-    `submitted_at` time)
-    ENGINE = INNODB
+    CREATE TABLE "posts"
+    ("published_at" time,
+    "submitted_at" time)
     """ |> remove_newlines]
   end
 
@@ -1143,7 +1142,6 @@ defmodule Ecto.Adapters.FirebirdTest do
     CREATE TABLE `posts`
     (`published_at` time(3),
     `submitted_at` time(6))
-    ENGINE = INNODB
     """ |> remove_newlines]
   end
 
@@ -1156,7 +1154,6 @@ defmodule Ecto.Adapters.FirebirdTest do
     CREATE TABLE `posts`
     (`published_at` datetime,
     `submitted_at` datetime)
-    ENGINE = INNODB
     """ |> remove_newlines]
   end
 
@@ -1169,7 +1166,6 @@ defmodule Ecto.Adapters.FirebirdTest do
     CREATE TABLE `posts`
     (`published_at` datetime(3),
     `submitted_at` datetime(6))
-    ENGINE = INNODB
     """ |> remove_newlines]
   end
 
@@ -1182,7 +1178,6 @@ defmodule Ecto.Adapters.FirebirdTest do
     CREATE TABLE `posts`
     (`published_at` datetime,
     `submitted_at` datetime)
-    ENGINE = INNODB
     """ |> remove_newlines]
   end
 
@@ -1195,7 +1190,6 @@ defmodule Ecto.Adapters.FirebirdTest do
     CREATE TABLE `posts`
     (`published_at` datetime(3),
     `submitted_at` datetime(6))
-    ENGINE = INNODB
     """ |> remove_newlines]
   end
 
