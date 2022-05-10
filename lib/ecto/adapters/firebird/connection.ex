@@ -113,7 +113,7 @@ if Code.ensure_loaded?(Firebirdex) do
     @impl true
     def delete_all(query) do
       if query.select do
-        error!(nil, ":select is not supported in delete_all by MySQL")
+        error!(nil, ":select is not supported in delete_all by Firebird")
       end
 
       sources = create_names(query, [])
@@ -400,18 +400,18 @@ if Code.ensure_loaded?(Firebirdex) do
       case dir do
         :asc  -> str
         :desc -> [str | " DESC"]
-        _ -> error!(query, "#{dir} is not supported in ORDER BY in MySQL")
+        _ -> error!(query, "#{dir} is not supported in ORDER BY in Firebird")
       end
     end
 
     defp limit(%{limit: nil}, _sources), do: []
     defp limit(%{limit: %QueryExpr{expr: expr}} = query, sources) do
-      [" LIMIT " | expr(expr, sources, query)]
+      [" FETCH FIRST ", expr(expr, sources, query), " ROWS ONLY "]
     end
 
     defp offset(%{offset: nil}, _sources), do: []
     defp offset(%{offset: %QueryExpr{expr: expr}} = query, sources) do
-      [" OFFSET " | expr(expr, sources, query)]
+      [" OFFSET ", expr(expr, sources, query), " ROWS "]
     end
 
     defp combinations(%{combinations: combinations}) do
