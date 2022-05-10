@@ -98,10 +98,10 @@ defmodule Ecto.Adapters.FirebirdTest do
     assert all(query) == ~s{SELECT s0."x" FROM (SELECT sp0."x" AS "x", sp0."y" AS "y" FROM "posts" AS sp0) AS s0}
 
     query = subquery("posts" |> select([r], %{x: r.x, z: r.y})) |> select([r], r) |> plan()
-    assert all(query) == ~s{SELECT s0.`x`, s0.`z` FROM (SELECT sp0.`x` AS `x`, sp0.`y` AS `z` FROM `posts` AS sp0) AS s0}
+    assert all(query) == ~s{SELECT s0."x", s0."z" FROM (SELECT sp0."x" AS "x", sp0."y" AS "z" FROM "posts" AS sp0) AS s0}
 
     query = subquery(subquery("posts" |> select([r], %{x: r.x, z: r.y})) |> select([r], r)) |> select([r], r) |> plan()
-    assert all(query) == ~s{SELECT s0.`x`, s0.`z` FROM (SELECT ss0.`x` AS `x`, ss0.`z` AS `z` FROM (SELECT ssp0.`x` AS `x`, ssp0.`y` AS `z` FROM `posts` AS ssp0) AS ss0) AS s0}
+    assert all(query) == ~s{SELECT s0."x", s0."z" FROM (SELECT ss0."x" AS "x", ss0."z" AS "z" FROM (SELECT ssp0."x" AS "x", ssp0."y" AS "z" FROM "posts" AS ssp0) AS ss0) AS s0}
   end
 
   test "CTE" do
@@ -126,14 +126,14 @@ defmodule Ecto.Adapters.FirebirdTest do
       |> plan()
 
     assert all(query) ==
-      ~s{WITH RECURSIVE `tree` AS } <>
-      ~s{(SELECT c0.`id` AS `id`, 1 AS `depth` FROM `categories` AS c0 WHERE (c0.`parent_id` IS NULL) } <>
+      ~s{WITH RECURSIVE "tree" AS } <>
+      ~s{(SELECT c0."id" AS "id", 1 AS "depth" FROM "categories" AS c0 WHERE (c0."parent_id" IS NULL) } <>
       ~s{UNION ALL } <>
-      ~s{(SELECT c0.`id`, t1.`depth` + 1 FROM `categories` AS c0 } <>
-      ~s{INNER JOIN `tree` AS t1 ON t1.`id` = c0.`parent_id`)) } <>
-      ~s{SELECT s0.`x`, t1.`id`, CAST(t1.`depth` AS unsigned) } <>
-      ~s{FROM `schema` AS s0 } <>
-      ~s{INNER JOIN `tree` AS t1 ON t1.`id` = s0.`category_id`}
+      ~s{(SELECT c0."id", t1."depth" + 1 FROM "categories" AS c0 } <>
+      ~s{INNER JOIN "tree" AS t1 ON t1."id" = c0."parent_id")) } <>
+      ~s{SELECT s0."x", t1."id", CAST(t1."depth" AS unsigned) } <>
+      ~s{FROM "schema" AS s0 } <>
+      ~s{INNER JOIN "tree" AS t1 ON t1."id" = s0."category_id"}
   end
 
   @raw_sql_cte """
@@ -165,16 +165,16 @@ defmodule Ecto.Adapters.FirebirdTest do
       |> plan()
 
     assert all(query) ==
-      ~s{WITH `comments_scope` AS (} <>
-      ~s{SELECT c0.`entity_id` AS `entity_id`, c0.`text` AS `text` } <>
-      ~s{FROM `comments` AS c0 WHERE (c0.`deleted_at` IS NULL)) } <>
-      ~s{SELECT p0.`title`, c1.`text` } <>
-      ~s{FROM `posts` AS p0 } <>
-      ~s{INNER JOIN `comments_scope` AS c1 ON c1.`entity_id` = p0.`guid` } <>
+      ~s{WITH "comments_scope" AS (} <>
+      ~s{SELECT c0."entity_id" AS "entity_id", c0."text" AS "text" } <>
+      ~s{FROM "comments" AS c0 WHERE (c0."deleted_at" IS NULL)) } <>
+      ~s{SELECT p0."title", c1."text" } <>
+      ~s{FROM "posts" AS p0 } <>
+      ~s{INNER JOIN "comments_scope" AS c1 ON c1."entity_id" = p0."guid" } <>
       ~s{UNION ALL } <>
-      ~s{(SELECT v0.`title`, c1.`text` } <>
-      ~s{FROM `videos` AS v0 } <>
-      ~s{INNER JOIN `comments_scope` AS c1 ON c1.`entity_id` = v0.`guid`)}
+      ~s{(SELECT v0."title", c1."text" } <>
+      ~s{FROM "videos" AS v0 } <>
+      ~s{INNER JOIN "comments_scope" AS c1 ON c1."entity_id" = v0."guid")}
   end
 
   test "fragment CTE" do
@@ -187,10 +187,10 @@ defmodule Ecto.Adapters.FirebirdTest do
       |> plan()
 
     assert all(query) ==
-      ~s{WITH RECURSIVE `tree` AS (#{@raw_sql_cte}) } <>
-      ~s{SELECT s0.`x` } <>
-      ~s{FROM `schema` AS s0 } <>
-      ~s{INNER JOIN `tree` AS t1 ON t1.`id` = s0.`category_id`}
+      ~s{WITH RECURSIVE "tree" AS (#{@raw_sql_cte}) } <>
+      ~s{SELECT s0."x" } <>
+      ~s{FROM "schema" AS s0 } <>
+      ~s{INNER JOIN "tree" AS t1 ON t1."id" = s0."category_id"}
   end
 
   test "CTE update_all" do
@@ -205,11 +205,11 @@ defmodule Ecto.Adapters.FirebirdTest do
       |> plan(:update_all)
 
     assert update_all(query) ==
-      ~s{WITH `target_rows` AS } <>
-      ~s{(SELECT s0.`id` AS `id` FROM `schema` AS s0 ORDER BY s0.`id` LIMIT 10 FOR UPDATE SKIP LOCKED) } <>
-      ~s{UPDATE `schema` AS s0, `target_rows` AS t1 } <>
-      ~s{SET s0.`x` = 123 } <>
-      ~s{WHERE (t1.`id` = s0.`id`)}
+      ~s{WITH "target_rows" AS } <>
+      ~s{(SELECT s0."id" AS "id" FROM "schema" AS s0 ORDER BY s0."id" LIMIT 10 FOR UPDATE SKIP LOCKED) } <>
+      ~s{UPDATE "schema" AS s0, "target_rows" AS t1 } <>
+      ~s{SET s0."x" = 123 } <>
+      ~s{WHERE (t1."id" = s0."id")}
   end
 
   test "CTE delete_all" do
@@ -223,27 +223,27 @@ defmodule Ecto.Adapters.FirebirdTest do
       |> plan(:delete_all)
 
     assert delete_all(query) ==
-      ~s{WITH `target_rows` AS } <>
-      ~s{(SELECT s0.`id` AS `id` FROM `schema` AS s0 ORDER BY s0.`id` LIMIT 10 FOR UPDATE SKIP LOCKED) } <>
+      ~s{WITH "target_rows" AS } <>
+      ~s{(SELECT s0."id" AS "id" FROM "schema" AS s0 ORDER BY s0."id" LIMIT 10 FOR UPDATE SKIP LOCKED) } <>
       ~s{DELETE s0.* } <>
-      ~s{FROM `schema` AS s0 } <>
-      ~s{INNER JOIN `target_rows` AS t1 ON t1.`id` = s0.`id`}
+      ~s{FROM "schema" AS s0 } <>
+      ~s{INNER JOIN "target_rows" AS t1 ON t1."id" = s0."id"}
   end
 
   test "select" do
     query = Schema |> select([r], {r.x, r.y}) |> plan()
-    assert all(query) == ~s{SELECT s0.`x`, s0.`y` FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
 
     query = Schema |> select([r], [r.x, r.y]) |> plan()
-    assert all(query) == ~s{SELECT s0.`x`, s0.`y` FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
 
     query = Schema |> select([r], struct(r, [:x, :y])) |> plan()
-    assert all(query) == ~s{SELECT s0.`x`, s0.`y` FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
   end
 
   test "aggregates" do
     query = Schema |> select(count()) |> plan()
-    assert all(query) == ~s{SELECT count(*) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT count(*) FROM "schema" AS s0}
   end
 
   test "aggregate filters" do
@@ -255,16 +255,16 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "distinct" do
     query = Schema |> distinct([r], true) |> select([r], {r.x, r.y}) |> plan()
-    assert all(query) == ~s{SELECT DISTINCT s0.`x`, s0.`y` FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT DISTINCT s0."x", s0."y" FROM "schema" AS s0}
 
     query = Schema |> distinct([r], false) |> select([r], {r.x, r.y}) |> plan()
-    assert all(query) == ~s{SELECT s0.`x`, s0.`y` FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
 
     query = Schema |> distinct(true) |> select([r], {r.x, r.y}) |> plan()
-    assert all(query) == ~s{SELECT DISTINCT s0.`x`, s0.`y` FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT DISTINCT s0."x", s0."y" FROM "schema" AS s0}
 
     query = Schema |> distinct(false) |> select([r], {r.x, r.y}) |> plan()
-    assert all(query) == ~s{SELECT s0.`x`, s0.`y` FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
 
     assert_raise Ecto.QueryError, ~r"DISTINCT with multiple columns is not supported by MySQL", fn ->
       query = Schema |> distinct([r], [r.x, r.y]) |> select([r], {r.x, r.y}) |> plan()
@@ -274,7 +274,7 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "coalesce" do
     query = Schema |> select([s], coalesce(s.x, 5)) |> plan()
-    assert all(query) == ~s{SELECT coalesce(s0.`x`, 5) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT coalesce(s0."x", 5) FROM "schema" AS s0}
   end
 
   test "where" do
@@ -287,24 +287,24 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "or_where" do
     query = Schema |> or_where([r], r.x == 42) |> or_where([r], r.y != 43) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 WHERE (s0.`x` = 42) OR (s0.`y` != 43)}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0."x" = 42) OR (s0."y" != 43)}
 
     query = Schema |> or_where([r], r.x == 42) |> or_where([r], r.y != 43) |> where([r], r.z == 44) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 WHERE ((s0.`x` = 42) OR (s0.`y` != 43)) AND (s0.`z` = 44)}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE ((s0."x" = 42) OR (s0."y" != 43)) AND (s0."z" = 44)}
   end
 
   test "order by" do
     query = Schema |> order_by([r], r.x) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 ORDER BY s0.`x`}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 ORDER BY s0."x"}
 
     query = Schema |> order_by([r], [r.x, r.y]) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 ORDER BY s0.`x`, s0.`y`}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 ORDER BY s0."x", s0."y"}
 
     query = Schema |> order_by([r], [asc: r.x, desc: r.y]) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 ORDER BY s0.`x`, s0.`y` DESC}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 ORDER BY s0."x", s0."y" DESC}
 
     query = Schema |> order_by([r], []) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0}
 
     for dir <- [:asc_nulls_first, :asc_nulls_last, :desc_nulls_first, :desc_nulls_last] do
       assert_raise Ecto.QueryError, ~r"#{dir} is not supported in ORDER BY in MySQL", fn ->
@@ -321,17 +321,17 @@ defmodule Ecto.Adapters.FirebirdTest do
     query = base_query |> union(^union_query1) |> union(^union_query2) |> plan()
 
     assert all(query) ==
-             ~s{SELECT s0.`x` FROM `schema` AS s0 } <>
-               ~s{UNION (SELECT s0.`y` FROM `schema` AS s0 ORDER BY s0.`y` LIMIT 40 OFFSET 20) } <>
-               ~s{UNION (SELECT s0.`z` FROM `schema` AS s0 ORDER BY s0.`z` LIMIT 60 OFFSET 30) } <>
+             ~s{SELECT s0."x" FROM "schema" AS s0 } <>
+               ~s{UNION (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
+               ~s{UNION (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
                ~s{ORDER BY rand LIMIT 5 OFFSET 10}
 
     query = base_query |> union_all(^union_query1) |> union_all(^union_query2) |> plan()
 
     assert all(query) ==
-             ~s{SELECT s0.`x` FROM `schema` AS s0 } <>
-               ~s{UNION ALL (SELECT s0.`y` FROM `schema` AS s0 ORDER BY s0.`y` LIMIT 40 OFFSET 20) } <>
-               ~s{UNION ALL (SELECT s0.`z` FROM `schema` AS s0 ORDER BY s0.`z` LIMIT 60 OFFSET 30) } <>
+             ~s{SELECT s0."x" FROM "schema" AS s0 } <>
+               ~s{UNION ALL (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
+               ~s{UNION ALL (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
                ~s{ORDER BY rand LIMIT 5 OFFSET 10}
   end
 
@@ -343,17 +343,17 @@ defmodule Ecto.Adapters.FirebirdTest do
     query = base_query |> except(^except_query1) |> except(^except_query2) |> plan()
 
     assert all(query) ==
-             ~s{SELECT s0.`x` FROM `schema` AS s0 } <>
-               ~s{EXCEPT (SELECT s0.`y` FROM `schema` AS s0 ORDER BY s0.`y` LIMIT 40 OFFSET 20) } <>
-               ~s{EXCEPT (SELECT s0.`z` FROM `schema` AS s0 ORDER BY s0.`z` LIMIT 60 OFFSET 30) } <>
+             ~s{SELECT s0."x" FROM "schema" AS s0 } <>
+               ~s{EXCEPT (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
+               ~s{EXCEPT (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
                ~s{ORDER BY rand LIMIT 5 OFFSET 10}
 
     query = base_query |> except_all(^except_query1) |> except_all(^except_query2) |> plan()
 
     assert all(query) ==
-             ~s{SELECT s0.`x` FROM `schema` AS s0 } <>
-               ~s{EXCEPT ALL (SELECT s0.`y` FROM `schema` AS s0 ORDER BY s0.`y` LIMIT 40 OFFSET 20) } <>
-               ~s{EXCEPT ALL (SELECT s0.`z` FROM `schema` AS s0 ORDER BY s0.`z` LIMIT 60 OFFSET 30) } <>
+             ~s{SELECT s0."x" FROM "schema" AS s0 } <>
+               ~s{EXCEPT ALL (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
+               ~s{EXCEPT ALL (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
                ~s{ORDER BY rand LIMIT 5 OFFSET 10}
   end
 
@@ -365,85 +365,85 @@ defmodule Ecto.Adapters.FirebirdTest do
     query = base_query |> intersect(^intersect_query1) |> intersect(^intersect_query2) |> plan()
 
     assert all(query) ==
-             ~s{SELECT s0.`x` FROM `schema` AS s0 } <>
-               ~s{INTERSECT (SELECT s0.`y` FROM `schema` AS s0 ORDER BY s0.`y` LIMIT 40 OFFSET 20) } <>
-               ~s{INTERSECT (SELECT s0.`z` FROM `schema` AS s0 ORDER BY s0.`z` LIMIT 60 OFFSET 30) } <>
+             ~s{SELECT s0."x" FROM "schema" AS s0 } <>
+               ~s{INTERSECT (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
+               ~s{INTERSECT (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
                ~s{ORDER BY rand LIMIT 5 OFFSET 10}
 
     query =
       base_query |> intersect_all(^intersect_query1) |> intersect_all(^intersect_query2) |> plan()
 
     assert all(query) ==
-             ~s{SELECT s0.`x` FROM `schema` AS s0 } <>
-               ~s{INTERSECT ALL (SELECT s0.`y` FROM `schema` AS s0 ORDER BY s0.`y` LIMIT 40 OFFSET 20) } <>
-               ~s{INTERSECT ALL (SELECT s0.`z` FROM `schema` AS s0 ORDER BY s0.`z` LIMIT 60 OFFSET 30) } <>
+             ~s{SELECT s0."x" FROM "schema" AS s0 } <>
+               ~s{INTERSECT ALL (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
+               ~s{INTERSECT ALL (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
                ~s{ORDER BY rand LIMIT 5 OFFSET 10}
   end
 
   test "limit and offset" do
     query = Schema |> limit([r], 3) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 LIMIT 3}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 LIMIT 3}
 
     query = Schema |> offset([r], 5) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 OFFSET 5}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 OFFSET 5}
 
     query = Schema |> offset([r], 5) |> limit([r], 3) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 LIMIT 3 OFFSET 5}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 LIMIT 3 OFFSET 5}
   end
 
   test "lock" do
     query = Schema |> lock("LOCK IN SHARE MODE") |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 LOCK IN SHARE MODE}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 LOCK IN SHARE MODE}
 
     query = Schema |> lock([p], fragment("UPDATE on ?", p)) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 UPDATE on s0}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 UPDATE on s0}
   end
 
   test "string escape" do
     query = "schema" |> where(foo: "'\\  ") |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 WHERE (s0.`foo` = '''\\\\  ')}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 WHERE (s0."foo" = '''\\\\  ')}
 
     query = "schema" |> where(foo: "'") |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM `schema` AS s0 WHERE (s0.`foo` = '''')}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 WHERE (s0."foo" = '''')}
   end
 
   test "binary ops" do
     query = Schema |> select([r], r.x == 2) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` = 2 FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" = 2 FROM "schema" AS s0}
 
     query = Schema |> select([r], r.x != 2) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` != 2 FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" != 2 FROM "schema" AS s0}
 
     query = Schema |> select([r], r.x <= 2) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` <= 2 FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" <= 2 FROM "schema" AS s0}
 
     query = Schema |> select([r], r.x >= 2) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` >= 2 FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" >= 2 FROM "schema" AS s0}
 
     query = Schema |> select([r], r.x < 2) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` < 2 FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" < 2 FROM "schema" AS s0}
 
     query = Schema |> select([r], r.x > 2) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` > 2 FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" > 2 FROM "schema" AS s0}
 
     query = Schema |> select([r], r.x + 2) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` + 2 FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" + 2 FROM "schema" AS s0}
   end
 
   test "is_nil" do
     query = Schema |> select([r], is_nil(r.x)) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` IS NULL FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" IS NULL FROM "schema" AS s0}
 
     query = Schema |> select([r], not is_nil(r.x)) |> plan()
-    assert all(query) == ~s{SELECT NOT (s0.`x` IS NULL) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT NOT (s0."x" IS NULL) FROM "schema" AS s0}
 
     query = "schema" |> select([r], r.x == is_nil(r.y)) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` = (s0.`y` IS NULL) FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" = (s0."y" IS NULL) FROM "schema" AS s0}
   end
 
   test "order_by and types" do
     query = "schema3" |> order_by([e], type(fragment("?", e.binary), ^:decimal)) |> select(true) |> plan()
-    assert all(query) == "SELECT TRUE FROM `schema3` AS s0 ORDER BY s0.`binary` + 0"
+    assert all(query) == ~s{SELECT TRUE FROM "schema3" AS s0 ORDER BY s0."binary" + 0}
   end
 
   test "fragments" do
