@@ -160,7 +160,7 @@ defmodule Ecto.Adapters.Firebird do
     charset = opts[:charset] || "utf8mb4"
 
     command =
-      ~s(CREATE DATABASE `#{database}` DEFAULT CHARACTER SET = #{charset})
+      ~s(CREATE DATABASE "#{database}" DEFAULT CHARACTER SET = #{charset})
       |> concat_if(opts[:collation], &"DEFAULT COLLATE = #{&1}")
 
     case run_query(command, opts) do
@@ -182,7 +182,7 @@ defmodule Ecto.Adapters.Firebird do
   def storage_down(opts) do
     database = Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
     opts = Keyword.delete(opts, :database)
-    command = "DROP DATABASE `#{database}`"
+    command = ~s{DROP DATABASE "#{database}"}
 
     case run_query(command, opts) do
       {:ok, _} ->
@@ -297,7 +297,7 @@ defmodule Ecto.Adapters.Firebird do
   end
 
   defp select_versions(table, config) do
-    case run_query(~s[SELECT version FROM `#{table}` ORDER BY version], config) do
+    case run_query(~s[SELECT version FROM "#{table}" ORDER BY version], config) do
       {:ok, %{rows: rows}} -> {:ok, Enum.map(rows, &hd/1)}
       {:error, %{mysql: %{name: :ER_NO_SUCH_TABLE}}} -> {:ok, []}
       {:error, _} = error -> error
@@ -318,7 +318,7 @@ defmodule Ecto.Adapters.Firebird do
   defp append_versions(table, versions, contents) do
     {:ok,
       contents <>
-      Enum.map_join(versions, &~s[INSERT INTO `#{table}` (version) VALUES (#{&1});\n])}
+      Enum.map_join(versions, &~s[INSERT INTO "#{table}" (version) VALUES (#{&1});\n])}
   end
 
   @impl true
@@ -378,8 +378,8 @@ defmodule Ecto.Adapters.Firebird do
 
   defp run_with_cmd(cmd, opts, opt_args) do
     unless System.find_executable(cmd) do
-      raise "could not find executable `#{cmd}` in path, " <>
-            "please guarantee it is available before running ecto commands"
+      raise ~s{could not find executable "#{cmd}" in path, } <>
+            ~s{please guarantee it is available before running ecto commands}
     end
 
     env =

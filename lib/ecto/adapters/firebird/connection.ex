@@ -700,7 +700,7 @@ if Code.ensure_loaded?(Firebirdex) do
         if_do(command == :create_if_not_exists, "IF NOT EXISTS "),
         quote_table(table.prefix, table.name),
         table_structure,
-        engine_expr(table.engine), options_expr(table.options)]]
+        options_expr(table.options)]]
     end
 
     def execute_ddl({command, %Table{} = table}) when command in [:drop, :drop_if_exists] do
@@ -880,9 +880,6 @@ if Code.ensure_loaded?(Firebirdex) do
     defp index_expr(literal) when is_binary(literal),
       do: literal
     defp index_expr(literal), do: quote_name(literal)
-
-    defp engine_expr(storage_engine),
-      do: [" ENGINE = ", String.upcase(to_string(storage_engine || "INNODB"))]
 
     defp options_expr(nil),
       do: []

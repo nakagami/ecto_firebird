@@ -1044,13 +1044,6 @@ defmodule Ecto.Adapters.FirebirdTest do
     """ |> remove_newlines]
   end
 
-  test "create table with engine" do
-    create = {:create, table(:posts, engine: :myisam),
-               [{:add, :id, :serial, [primary_key: true]}]}
-    assert execute_ddl(create) ==
-           [~s|CREATE TABLE "posts" ("id" bigint unsigned not null auto_increment, PRIMARY KEY ("id")) ENGINE = MYISAM|]
-  end
-
   test "create table with references" do
     create = {:create, table(:posts),
                [{:add, :id, :serial, [primary_key: true]},
@@ -1088,14 +1081,6 @@ defmodule Ecto.Adapters.FirebirdTest do
                 {:add, :created_at, :datetime, []}]}
     assert execute_ddl(create) ==
            [~s|CREATE TABLE "posts" ("id" bigint unsigned not null auto_increment, "created_at" datetime, PRIMARY KEY ("id")) WITH FOO=BAR|]
-  end
-
-  test "create table with both engine and options" do
-    create = {:create, table(:posts, engine: :myisam, options: "WITH FOO=BAR"),
-               [{:add, :id, :serial, [primary_key: true]},
-                {:add, :created_at, :datetime, []}]}
-    assert execute_ddl(create) ==
-           [~s|CREATE TABLE "posts" ("id" bigint unsigned not null auto_increment, "created_at" datetime, PRIMARY KEY ("id")) ENGINE = MYISAM WITH FOO=BAR|]
   end
 
   test "create table with composite key" do
