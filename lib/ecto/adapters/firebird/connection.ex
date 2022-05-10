@@ -989,10 +989,10 @@ if Code.ensure_loaded?(Firebirdex) do
     defp quote_table(name) when is_atom(name),
       do: quote_table(Atom.to_string(name))
     defp quote_table(name) do
-      if String.contains?(name, "`") do
+      if String.contains?(name, "\"") do
         error!(nil, "bad table name #{inspect name}")
       end
-      [?`, name, ?`]
+      [?", name, ?"]
     end
 
     defp intersperse_map(list, separator, mapper, acc \\ [])
