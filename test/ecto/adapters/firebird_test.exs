@@ -67,35 +67,35 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "from" do
     query = Schema |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0}
   end
 
   test "from with hints" do
     query = Schema |> from(hints: ["USE INDEX FOO", "USE INDEX BAR"]) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 USE INDEX FOO USE INDEX BAR}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 USE INDEX FOO USE INDEX BAR}
   end
 
   test "from without schema" do
     query = "posts" |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT p0.`x` FROM `posts` AS p0}
+    assert all(query) == ~s{SELECT p0."x" FROM "posts" AS p0}
 
     query = "posts" |> select([r], fragment("?", r)) |> plan()
-    assert all(query) == ~s{SELECT p0 FROM `posts` AS p0}
+    assert all(query) == ~s{SELECT p0 FROM "posts" AS p0}
 
     query = "Posts" |> select([:x]) |> plan()
-    assert all(query) == ~s{SELECT P0.`x` FROM `Posts` AS P0}
+    assert all(query) == ~s{SELECT P0."x" FROM "Posts" AS P0}
 
     query = "0posts" |> select([:x]) |> plan()
-    assert all(query) == ~s{SELECT t0.`x` FROM `0posts` AS t0}
+    assert all(query) == ~s{SELECT t0."x" FROM "0posts" AS t0}
 
-    assert_raise Ecto.QueryError, ~r"MySQL does not support selecting all fields from `posts` without a schema", fn ->
+    assert_raise Ecto.QueryError, ~r"Firebird does not support selecting all fields from `posts` without a schema", fn ->
       all from(p in "posts", select: p) |> plan()
     end
   end
 
   test "from with subquery" do
     query = subquery("posts" |> select([r], %{x: r.x, y: r.y})) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM (SELECT sp0.`x` AS `x`, sp0.`y` AS `y` FROM `posts` AS sp0) AS s0}
+    assert all(query) == ~s{SELECT s0."x" FROM (SELECT sp0."x" AS "x", sp0."y" AS "y" FROM "posts" AS sp0) AS s0}
 
     query = subquery("posts" |> select([r], %{x: r.x, z: r.y})) |> select([r], r) |> plan()
     assert all(query) == ~s{SELECT s0.`x`, s0.`z` FROM (SELECT sp0.`x` AS `x`, sp0.`y` AS `z` FROM `posts` AS sp0) AS s0}
@@ -279,10 +279,10 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "where" do
     query = Schema |> where([r], r.x == 42) |> where([r], r.y != 43) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 WHERE (s0.`x` = 42) AND (s0.`y` != 43)}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0."x" = 42) AND (s0."y" != 43)}
 
     query = Schema |> where([r], {r.x, r.y} > {1, 2}) |> select([r], r.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 WHERE ((s0.`x`,s0.`y`) > (1,2))}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE ((s0."x",s0."y") > (1,2))}
   end
 
   test "or_where" do
@@ -555,10 +555,10 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "having" do
     query = Schema |> having([p], p.x == p.x) |> select([p], p.x) |> plan()
-    assert all(query) == ~s{SELECT s0.`x` FROM `schema` AS s0 HAVING (s0.`x` = s0.`x`)}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 HAVING (s0."x" = s0."x")}
 
     query = Schema |> having([p], p.x == p.x) |> having([p], p.y == p.y) |> select([p], [p.y, p.x]) |> plan()
-    assert all(query) == ~s{SELECT s0.`y`, s0.`x` FROM `schema` AS s0 HAVING (s0.`x` = s0.`x`) AND (s0.`y` = s0.`y`)}
+    assert all(query) == ~s{SELECT s0."y", s0."x" FROM "schema" AS s0 HAVING (s0."x" = s0."x") AND (s0."y" = s0."y")}
   end
 
   test "or_having" do
@@ -949,7 +949,7 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "insert with on duplicate key" do
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {:nothing, [], []}, [])
-    assert query == ~s{INSERT INTO `schema` (`x`,`y`) VALUES (?,?) ON DUPLICATE KEY UPDATE `x` = `x`}
+    assert query == ~s{INSERT INTO "schema" ("x","y") VALUES (?,?) ON DUPLICATE KEY UPDATE "x" = "x"}
 
     update = from("schema", update: [set: [z: "foo"]]) |> plan(:update_all)
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {update, [], []}, [])
@@ -971,7 +971,7 @@ defmodule Ecto.Adapters.FirebirdTest do
   test "insert with query" do
     select_query = from("schema", select: [:id]) |> plan(:all)
     query = insert(nil, "schema", [:x, :y, :z], [[:x, {select_query, 2}, :z], [nil, nil, {select_query, 1}]], {:raise, [], []}, [])
-    assert query == ~s{INSERT INTO `schema` (`x`,`y`,`z`) VALUES (?,(SELECT s0.`id` FROM `schema` AS s0),?),(DEFAULT,DEFAULT,(SELECT s0.`id` FROM `schema` AS s0))}
+    assert query == ~s{INSERT INTO "schema" ("x","y","z") VALUES (?,(SELECT s0."id" FROM "schema" AS s0),?),(DEFAULT,DEFAULT,(SELECT s0."id" FROM "schema" AS s0))}
   end
 
   test "update" do
@@ -1016,13 +1016,13 @@ defmodule Ecto.Adapters.FirebirdTest do
                 {:add, :is_active, :boolean, [default: true]}]}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts` (`name` varchar(20) DEFAULT 'Untitled' NOT NULL,
-    `token` varbinary(20) NOT NULL,
-    `price` numeric(8,2) DEFAULT expr,
-    `on_hand` integer DEFAULT 0 NULL,
-    `likes` smallint unsigned DEFAULT 0 NOT NULL,
-    `published_at` datetime(6) NULL,
-    `is_active` boolean DEFAULT true) ENGINE = INNODB
+    CREATE TABLE "posts" ("name" varchar(20) DEFAULT 'Untitled' NOT NULL,
+    "token" varbinary(20) NOT NULL,
+    "price" numeric(8,2) DEFAULT expr,
+    "on_hand" integer DEFAULT 0 NULL,
+    "likes" smallint unsigned DEFAULT 0 NOT NULL,
+    "published_at" datetime(6) NULL,
+    "is_active" boolean DEFAULT true) ENGINE = INNODB
     """ |> remove_newlines]
   end
 
@@ -1284,10 +1284,10 @@ defmodule Ecto.Adapters.FirebirdTest do
                 {:modify, :permalink_id, %Reference{table: :permalinks}, null: false}]}
 
     assert execute_ddl(alter) == ["""
-    ALTER TABLE `foo`.`posts` ADD `author_id` BIGINT UNSIGNED,
-    ADD CONSTRAINT `posts_author_id_fkey` FOREIGN KEY (`author_id`) REFERENCES `foo`.`author`(`id`),
-    MODIFY `permalink_id` BIGINT UNSIGNED NOT NULL,
-    ADD CONSTRAINT `posts_permalink_id_fkey` FOREIGN KEY (`permalink_id`) REFERENCES `foo`.`permalinks`(`id`)
+    ALTER TABLE "foo"."posts" ADD "author_id" BIGINT UNSIGNED,
+    ADD CONSTRAINT "posts_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "foo"."author"("id"),
+    MODIFY "permalink_id" BIGINT UNSIGNED NOT NULL,
+    ADD CONSTRAINT "posts_permalink_id_fkey" FOREIGN KEY ("permalink_id") REFERENCES "foo"."permalinks"("id")
     """ |> remove_newlines]
   end
 

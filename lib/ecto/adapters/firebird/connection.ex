@@ -316,7 +316,7 @@ if Code.ensure_loaded?(Firebirdex) do
             {join, name} = get_source(query, sources, ix, source)
             [join, " AS " | name]
           %JoinExpr{qual: qual} ->
-            error!(query, "MySQL adapter supports only inner joins on #{kind}, got: `#{qual}`")
+            error!(query, "Firebird adapter supports only inner joins on #{kind}, got: `#{qual}`")
         end)
 
       wheres =
