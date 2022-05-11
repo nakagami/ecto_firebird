@@ -322,8 +322,8 @@ defmodule Ecto.Adapters.FirebirdTest do
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{UNION (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
-               ~s{UNION (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
+               ~s{UNION (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FETCH FIRST 40 ROWS ONLY  OFFSET 20 ROWS ) } <>
+               ~s{UNION (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FETCH FIRST 60 ROWS ONLY  OFFSET 30 ROWS ) } <>
                ~s{ORDER BY rand LIMIT 5 OFFSET 10}
 
     query = base_query |> union_all(^union_query1) |> union_all(^union_query2) |> plan()
@@ -344,9 +344,9 @@ defmodule Ecto.Adapters.FirebirdTest do
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{EXCEPT (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
-               ~s{EXCEPT (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
-               ~s{ORDER BY rand LIMIT 5 OFFSET 10}
+               ~s{EXCEPT (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FETCH FIRST 40 ROWS ONLY  OFFSET 20 ROWS) } <>
+               ~s{EXCEPT (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FETCH FIRST 60 ROWS ONLY  OFFSET 30 ROWS) } <>
+               ~s{ORDER BY rand FETCH FIRST 5 ROWS ONLY  OFFSET 10 ROWS}
 
     query = base_query |> except_all(^except_query1) |> except_all(^except_query2) |> plan()
 
@@ -385,10 +385,10 @@ defmodule Ecto.Adapters.FirebirdTest do
     assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 FETCH FIRST 3 ROWS ONLY }
 
     query = Schema |> offset([r], 5) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 OFFSET 5}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 OFFSET 5 ROWS }
 
     query = Schema |> offset([r], 5) |> limit([r], 3) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 LIMIT 3 OFFSET 5}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 FETCH FIRST 3 ROWS ONLY  OFFSET 5 ROWS }
   end
 
   test "lock" do
