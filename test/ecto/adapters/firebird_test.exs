@@ -16,10 +16,10 @@ defmodule Ecto.Adapters.FirebirdTest do
       field :z, :integer
       field :meta, :map
 
-      has_many :comments, Ecto.Adapters.Firebird.Schema2,
+      has_many :comments, Ecto.Adapters.FirebirdTest.Schema2,
         references: :x,
         foreign_key: :z
-      has_one :permalink, Ecto.Adapters.Firebird.Schema3,
+      has_one :permalink, Ecto.Adapters.FirebirdTest.Schema3,
         references: :y,
         foreign_key: :id
     end
@@ -29,7 +29,7 @@ defmodule Ecto.Adapters.FirebirdTest do
     use Ecto.Schema
 
     schema "schema2" do
-      belongs_to :post, Ecto.Adapters.Firebird.Schema,
+      belongs_to :post, Ecto.Adapters.FirebirdTest.Schema,
         references: :x,
         foreign_key: :z
     end
