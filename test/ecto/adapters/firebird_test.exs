@@ -382,7 +382,7 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "limit and offset" do
     query = Schema |> limit([r], 3) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 LIMIT 3}
+    assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 FETCH FIRST 3 ROWS ONLY }
 
     query = Schema |> offset([r], 5) |> select([], true) |> plan()
     assert all(query) == ~s{SELECT TRUE FROM "schema" AS s0 OFFSET 5}
@@ -1124,9 +1124,9 @@ defmodule Ecto.Adapters.FirebirdTest do
                {:add, :submitted_at, :time_usec, []}]}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts`
-    (`published_at` time(3),
-    `submitted_at` time(6))
+    CREATE TABLE "posts"
+    ("published_at" time(3),
+    "submitted_at" time(6))
     """ |> remove_newlines]
   end
 
@@ -1136,9 +1136,9 @@ defmodule Ecto.Adapters.FirebirdTest do
                {:add, :submitted_at, :utc_datetime, []}]}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts`
-    (`published_at` datetime,
-    `submitted_at` datetime)
+    CREATE TABLE "posts"
+    ("published_at" datetime,
+    "submitted_at" datetime)
     """ |> remove_newlines]
   end
 
@@ -1148,9 +1148,9 @@ defmodule Ecto.Adapters.FirebirdTest do
                {:add, :submitted_at, :utc_datetime_usec, []}]}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts`
-    (`published_at` datetime(3),
-    `submitted_at` datetime(6))
+    CREATE TABLE "posts"
+    ("published_at" datetime(3),
+    "submitted_at" datetime(6))
     """ |> remove_newlines]
   end
 
@@ -1284,7 +1284,7 @@ defmodule Ecto.Adapters.FirebirdTest do
   test "alter table with invalid reference opts" do
     alter = {:alter, table(:posts), [{:add, :author_id, %Reference{table: :author, validate: false}, []}]}
 
-    assert_raise ArgumentError, "validate: false on references is not supported in Firebird", fn ->
+    assert_raise ArgumentError, "validate: false on references is not supported in Firebirdex", fn ->
       execute_ddl(alter)
     end
   end
