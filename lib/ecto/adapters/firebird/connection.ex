@@ -93,6 +93,10 @@ if Code.ensure_loaded?(Firebirdex) do
     def update_all(query, prefix \\ nil) do
       %{from: %{source: source}, select: select} = query
 
+      if select do
+        error!(nil, ":select is not supported in update_all by Firebird")
+      end
+
       sources = create_names(query, [])
       cte = cte(query, sources)
       {from, name} = get_source(query, sources, 0, source)

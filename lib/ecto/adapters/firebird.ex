@@ -42,7 +42,7 @@ defmodule Ecto.Adapters.Firebird do
 
       socket_options: [recbuf: 8192, sndbuf: 8192]
 
-  We also recommend developers to consult the `MyXQL.start_link/1` documentation
+  We also recommend developers to consult the `Firebirdex.start_link/1` documentation
   for a complete listing of all supported options.
 
   ### Storage options
@@ -349,9 +349,9 @@ defmodule Ecto.Adapters.Firebird do
       |> Keyword.put(:max_restarts, 0)
 
     task = Task.Supervisor.async_nolink(Ecto.Adapters.SQL.StorageSupervisor, fn ->
-      {:ok, conn} = MyXQL.start_link(opts)
+      {:ok, conn} = Firebirdex.start_link(opts)
 
-      value = MyXQL.query(conn, sql, [], opts)
+      value = Firebirdex.query(conn, sql, [], opts)
       GenServer.stop(conn)
       value
     end)
@@ -371,7 +371,7 @@ defmodule Ecto.Adapters.Firebird do
   end
 
   defp exit_to_exception({%{__struct__: struct} = error, _})
-       when struct in [MyXQL.Error, DBConnection.Error],
+       when struct in [Firebirdex.Error, DBConnection.Error],
        do: error
 
   defp exit_to_exception(reason), do: RuntimeError.exception(Exception.format_exit(reason))
