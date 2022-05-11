@@ -46,6 +46,8 @@ defmodule EctoFirebird.MixProject do
       {:ecto_sql, "~> 3.7"},
       {:ecto, "~> 3.7"},
       {:firebirdex, git: "https://github.com/nakagami/firebirdex.git", branch: "master"},
+
+      {:jason, ">= 0.0.0", only: [:test, :docs]},
     ]
   end
 end
