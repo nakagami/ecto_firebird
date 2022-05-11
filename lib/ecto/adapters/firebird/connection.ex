@@ -247,8 +247,7 @@ if Code.ensure_loaded?(Firebirdex) do
         {:&, _, [idx]} ->
           case elem(sources, idx) do
             {source, _, nil} ->
-              error!(query, "Firebird does not support selecting all fields from #{source} without a schema. " <>
-                            "Please specify a schema or specify exactly which fields you want to select")
+              error!(query, "Firebird does not support selecting all fields from #{source} without a schema. ")
             {_, source, _} ->
               source
           end
