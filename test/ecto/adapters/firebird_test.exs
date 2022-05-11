@@ -1160,9 +1160,9 @@ defmodule Ecto.Adapters.FirebirdTest do
                {:add, :submitted_at, :naive_datetime, []}]}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts`
-    (`published_at` datetime,
-    `submitted_at` datetime)
+    CREATE TABLE "posts"
+    ("published_at" datetime,
+    "submitted_at" datetime)
     """ |> remove_newlines]
   end
 
@@ -1172,9 +1172,9 @@ defmodule Ecto.Adapters.FirebirdTest do
                {:add, :submitted_at, :naive_datetime_usec, []}]}
 
     assert execute_ddl(create) == ["""
-    CREATE TABLE `posts`
-    (`published_at` datetime(3),
-    `submitted_at` datetime(6))
+    CREATE TABLE "posts"
+    ("published_at" datetime(3),
+    "submitted_at" datetime(6))
     """ |> remove_newlines]
   end
 
@@ -1193,12 +1193,12 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "drop table" do
     drop = {:drop, table(:posts)}
-    assert execute_ddl(drop) == [~s|DROP TABLE `posts`|]
+    assert execute_ddl(drop) == [~s|DROP TABLE "posts"|]
   end
 
   test "drop table with prefixes" do
     drop = {:drop, table(:posts, prefix: :foo)}
-    assert execute_ddl(drop) == [~s|DROP TABLE `foo`.`posts`|]
+    assert execute_ddl(drop) == [~s|DROP TABLE "foo"."posts"|]
   end
 
   test "drop constraint" do
@@ -1232,28 +1232,28 @@ defmodule Ecto.Adapters.FirebirdTest do
                 {:remove_if_exists, :space_id, %Reference{table: :author}}]}
 
     assert execute_ddl(alter) == ["""
-    ALTER TABLE `posts` ADD `title` varchar(100) DEFAULT 'Untitled' NOT NULL,
-    ADD `author_id` BIGINT UNSIGNED AFTER `title`,
-    ADD CONSTRAINT `posts_author_id_fkey` FOREIGN KEY (`author_id`) REFERENCES `author`(`id`),
-    ADD IF NOT EXISTS `subtitle` varchar(100) NOT NULL,
-    ADD IF NOT EXISTS `editor_id` BIGINT UNSIGNED AFTER `subtitle`,
-    ADD CONSTRAINT `posts_editor_id_fkey` FOREIGN KEY IF NOT EXISTS (`editor_id`) REFERENCES `editor`(`id`),
-    MODIFY `price` numeric(8,2) NULL, MODIFY `cost` integer DEFAULT NULL NOT NULL,
-    MODIFY `permalink_id` BIGINT UNSIGNED NOT NULL,
-    ADD CONSTRAINT `posts_permalink_id_fkey` FOREIGN KEY (`permalink_id`) REFERENCES `permalinks`(`id`),
-    MODIFY `status` varchar(255),
-    DROP FOREIGN KEY `posts_user_id_fkey`,
-    MODIFY `user_id` integer,
-    DROP FOREIGN KEY `posts_group_id_fkey`,
-    MODIFY `group_id` BIGINT UNSIGNED,
-    ADD CONSTRAINT `posts_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`gid`),
-    DROP `summary`,
-    DROP `body`,
-    DROP FOREIGN KEY `posts_space_id_fkey`,
-    DROP `space_id`,
-    DROP IF EXISTS `body`,
-    DROP FOREIGN KEY IF EXISTS `posts_space_id_fkey`,
-    DROP IF EXISTS `space_id`
+    ALTER TABLE "posts" ADD "title" varchar(100) DEFAULT 'Untitled' NOT NULL,
+    ADD "author_id" BIGINT UNSIGNED AFTER "title",
+    ADD CONSTRAINT "posts_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "author"("id"),
+    ADD IF NOT EXISTS "subtitle" varchar(100) NOT NULL,
+    ADD IF NOT EXISTS "editor_id" BIGINT UNSIGNED AFTER "subtitle",
+    ADD CONSTRAINT "posts_editor_id_fkey" FOREIGN KEY IF NOT EXISTS ("editor_id") REFERENCES "editor"("id"),
+    MODIFY "price" numeric(8,2) NULL, MODIFY "cost" integer DEFAULT NULL NOT NULL,
+    MODIFY "permalink_id" BIGINT UNSIGNED NOT NULL,
+    ADD CONSTRAINT "posts_permalink_id_fkey" FOREIGN KEY ("permalink_id") REFERENCES "permalinks"("id"),
+    MODIFY "status" varchar(255),
+    DROP FOREIGN KEY "posts_user_id_fkey",
+    MODIFY "user_id" integer,
+    DROP FOREIGN KEY "posts_group_id_fkey",
+    MODIFY "group_id" BIGINT UNSIGNED,
+    ADD CONSTRAINT "posts_group_id_fkey" FOREIGN KEY ("group_id") REFERENCES "groups"("gid"),
+    DROP "summary",
+    DROP "body",
+    DROP FOREIGN KEY "posts_space_id_fkey",
+    DROP "space_id",
+    DROP IF EXISTS "body",
+    DROP FOREIGN KEY IF EXISTS "posts_space_id_fkey",
+    DROP IF EXISTS "space_id"
     """ |> remove_newlines]
   end
 
@@ -1275,9 +1275,9 @@ defmodule Ecto.Adapters.FirebirdTest do
                [{:add, :my_pk, :serial, [primary_key: true]}]}
 
     assert execute_ddl(alter) == ["""
-    ALTER TABLE `posts`
-    ADD `my_pk` bigint unsigned not null auto_increment,
-    ADD PRIMARY KEY (`my_pk`)
+    ALTER TABLE "posts"
+    ADD "my_pk" bigint unsigned not null auto_increment,
+    ADD PRIMARY KEY ("my_pk")
     """ |> remove_newlines]
   end
 
@@ -1292,23 +1292,23 @@ defmodule Ecto.Adapters.FirebirdTest do
   test "create index" do
     create = {:create, index(:posts, [:category_id, :permalink])}
     assert execute_ddl(create) ==
-           [~s|CREATE INDEX `posts_category_id_permalink_index` ON `posts` (`category_id`, `permalink`)|]
+           [~s|CREATE INDEX "posts_category_id_permalink_index" ON "posts" ("category_id", "permalink")|]
 
     create = {:create, index(:posts, ["permalink(8)"], name: "posts$main")}
     assert execute_ddl(create) ==
-           [~s|CREATE INDEX `posts$main` ON `posts` (permalink(8))|]
+           [~s|CREATE INDEX "posts$main" ON "posts" (permalink(8))|]
   end
 
   test "create index with prefix" do
     create = {:create, index(:posts, [:category_id, :permalink], prefix: :foo)}
     assert execute_ddl(create) ==
-           [~s|CREATE INDEX `posts_category_id_permalink_index` ON `foo`.`posts` (`category_id`, `permalink`)|]
+           [~s|CREATE INDEX "posts_category_id_permalink_index" ON "foo"."posts" ("category_id", "permalink")|]
   end
 
   test "create unique index" do
     create = {:create, index(:posts, [:permalink], unique: true)}
     assert execute_ddl(create) ==
-           [~s|CREATE UNIQUE INDEX `posts_permalink_index` ON `posts` (`permalink`)|]
+           [~s|CREATE UNIQUE INDEX "posts_permalink_index" ON "posts" ("permalink")|]
   end
 
   test "create unique index with condition" do
@@ -1343,37 +1343,37 @@ defmodule Ecto.Adapters.FirebirdTest do
   test "create an index using a different type" do
     create = {:create, index(:posts, [:permalink], using: :hash)}
     assert execute_ddl(create) ==
-           [~s|CREATE INDEX `posts_permalink_index` ON `posts` (`permalink`) USING hash|]
+           [~s|CREATE INDEX "posts_permalink_index" ON "posts" ("permalink") USING hash|]
   end
 
   test "drop index" do
     drop = {:drop, index(:posts, [:id], name: "posts$main")}
-    assert execute_ddl(drop) == [~s|DROP INDEX `posts$main` ON `posts`|]
+    assert execute_ddl(drop) == [~s|DROP INDEX "posts$main" ON "posts"|]
   end
 
   test "drop index with prefix" do
     drop = {:drop, index(:posts, [:id], name: "posts$main", prefix: :foo)}
-    assert execute_ddl(drop) == [~s|DROP INDEX `posts$main` ON `foo`.`posts`|]
+    assert execute_ddl(drop) == [~s|DROP INDEX "posts$main" ON "foo"."posts"|]
   end
 
   test "rename table" do
     rename = {:rename, table(:posts), table(:new_posts)}
-    assert execute_ddl(rename) == [~s|RENAME TABLE `posts` TO `new_posts`|]
+    assert execute_ddl(rename) == [~s|RENAME TABLE "posts" TO "new_posts"|]
   end
 
   test "rename table with prefix" do
     rename = {:rename, table(:posts, prefix: :foo), table(:new_posts, prefix: :foo)}
-    assert execute_ddl(rename) == [~s|RENAME TABLE `foo`.`posts` TO `foo`.`new_posts`|]
+    assert execute_ddl(rename) == [~s|RENAME TABLE "foo"."posts" TO "foo"."new_posts"|]
   end
 
   test "rename column" do
     rename = {:rename, table(:posts), :given_name, :first_name}
-    assert execute_ddl(rename) == [~s|ALTER TABLE `posts` RENAME COLUMN `given_name` TO `first_name`|]
+    assert execute_ddl(rename) == [~s|ALTER TABLE "posts" RENAME COLUMN "given_name" TO "first_name"|]
   end
 
   test "rename column in prefixed table" do
     rename = {:rename, table(:posts, prefix: :foo), :given_name, :first_name}
-    assert execute_ddl(rename) == [~s|ALTER TABLE `foo`.`posts` RENAME COLUMN `given_name` TO `first_name`|]
+    assert execute_ddl(rename) == [~s|ALTER TABLE "foo"."posts" RENAME COLUMN "given_name" TO "first_name"|]
   end
 
   # Unsupported types and clauses
