@@ -6,7 +6,7 @@ defmodule Ecto.Adapters.Firebird do
 
   ## Options
 
-  MySQL options split in different categories described
+  Firebird options split in different categories described
   below. All options can be given via the repository
   configuration:
 
@@ -14,7 +14,7 @@ defmodule Ecto.Adapters.Firebird do
 
     * `:protocol` - Set to `:socket` for using UNIX domain socket, or `:tcp` for TCP
       (default: `:socket`)
-    * `:socket` - Connect to MySQL via UNIX sockets in the given path.
+    * `:socket` - Connect to Firebird via UNIX sockets in the given path.
     * `:hostname` - Server hostname
     * `:port` - Server port (default: 3306)
     * `:username` - Username
@@ -27,7 +27,7 @@ defmodule Ecto.Adapters.Firebird do
     * `:cli_protocol` - The protocol used for the mysql client connection (default: `"tcp"`).
       This option is only used for `mix ecto.load` and `mix ecto.dump`,
       via the `mysql` command. For more information, please check
-      [MySQL docs](https://dev.mysql.com/doc/en/connecting.html)
+      [Firebird docs](https://dev.mysql.com/doc/en/connecting.html)
     * `:socket_options` - Specifies socket configuration
     * `:show_sensitive_data_on_connection_error` - show connection data and
       configuration whenever there is an error attempting to connect to the
@@ -64,36 +64,36 @@ defmodule Ecto.Adapters.Firebird do
 
   ## Limitations
 
-  There are some limitations when using Ecto with MySQL that one
+  There are some limitations when using Ecto with Firebird that one
   needs to be aware of.
 
   ### Engine
 
   Tables created by Ecto are guaranteed to use InnoDB, regardless
-  of the MySQL version.
+  of the Firebird version.
 
   ### UUIDs
 
-  MySQL does not support UUID types. Ecto emulates them by using
+  Firebird does not support UUID types. Ecto emulates them by using
   `binary(16)`.
 
   ### Read after writes
 
-  Because MySQL does not support RETURNING clauses in INSERT and
+  Because Firebird does not support RETURNING clauses in INSERT and
   UPDATE, it does not support the `:read_after_writes` option of
   `Ecto.Schema.field/3`.
 
   ### DDL Transaction
 
-  MySQL does not support migrations inside transactions as it
+  Firebird does not support migrations inside transactions as it
   automatically commits after some commands like CREATE TABLE.
-  Therefore MySQL migrations does not run inside transactions.
+  Therefore Firebird migrations does not run inside transactions.
 
-  ## Old MySQL versions
+  ## Old Firebird versions
 
   ### JSON support
 
-  MySQL introduced a native JSON type in v5.7.8, if your server is
+  Firebird introduced a native JSON type in v5.7.8, if your server is
   using this version or higher, you may use `:map` type for your
   column in migration:
 
@@ -108,15 +108,15 @@ defmodule Ecto.Adapters.Firebird do
 
   ### usec in datetime
 
-  Old MySQL versions did not support usec in datetime while
+  Old Firebird versions did not support usec in datetime while
   more recent versions would round or truncate the usec value.
 
   Therefore, in case the user decides to use microseconds in
-  datetimes and timestamps with MySQL, be aware of such
-  differences and consult the documentation for your MySQL
+  datetimes and timestamps with Firebird, be aware of such
+  differences and consult the documentation for your Firebird
   version.
 
-  If your version of MySQL supports microsecond precision, you
+  If your version of Firebird supports microsecond precision, you
   will be able to utilize Ecto's usec types.
   """
 
@@ -127,7 +127,7 @@ defmodule Ecto.Adapters.Firebird do
   @behaviour Ecto.Adapter.Storage
   @behaviour Ecto.Adapter.Structure
 
-  ## Custom MySQL types
+  ## Custom Firebird types
 
   @impl true
   def loaders({:map, _}, type),   do: [&json_decode/1, &Ecto.Type.embedded_load(type, &1, :json)]
@@ -274,7 +274,7 @@ defmodule Ecto.Adapters.Firebird do
   defp primary_key!(%{autogenerate_id: {_, key, _type}}, [key]), do: key
   defp primary_key!(_, []), do: nil
   defp primary_key!(%{schema: schema}, returning) do
-    raise ArgumentError, "MySQL does not support :read_after_writes in schemas for non-primary keys. " <>
+    raise ArgumentError, "Firebird does not support :read_after_writes in schemas for non-primary keys. " <>
                          "The following fields in #{inspect schema} are tagged as such: #{inspect returning}"
   end
 

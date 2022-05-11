@@ -248,7 +248,7 @@ defmodule Ecto.Adapters.FirebirdTest do
 
   test "aggregate filters" do
     query = Schema |> select([r], count(r.x) |> filter(r.x > 10)) |> plan()
-    assert_raise Ecto.QueryError, ~r/MySQL adapter does not support aggregate filters in query/, fn ->
+    assert_raise Ecto.QueryError, ~r/Firebird adapter does not support aggregate filters in query/, fn ->
       all(query)
     end
   end
@@ -266,7 +266,7 @@ defmodule Ecto.Adapters.FirebirdTest do
     query = Schema |> distinct(false) |> select([r], {r.x, r.y}) |> plan()
     assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
 
-    assert_raise Ecto.QueryError, ~r"DISTINCT with multiple columns is not supported by MySQL", fn ->
+    assert_raise Ecto.QueryError, ~r"DISTINCT with multiple columns is not supported by Firebird", fn ->
       query = Schema |> distinct([r], [r.x, r.y]) |> select([r], {r.x, r.y}) |> plan()
       all(query)
     end
@@ -307,7 +307,7 @@ defmodule Ecto.Adapters.FirebirdTest do
     assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0}
 
     for dir <- [:asc_nulls_first, :asc_nulls_last, :desc_nulls_first, :desc_nulls_last] do
-      assert_raise Ecto.QueryError, ~r"#{dir} is not supported in ORDER BY in MySQL", fn ->
+      assert_raise Ecto.QueryError, ~r"#{dir} is not supported in ORDER BY in Firebird", fn ->
         Schema |> order_by([r], [{^dir, r.x}]) |> select([r], r.x) |> plan() |> all()
       end
     end
@@ -667,7 +667,7 @@ defmodule Ecto.Adapters.FirebirdTest do
            ~s{UPDATE "schema" AS s0, "schema2" AS s1 } <>
            ~s{SET s0."x" = 0 WHERE (s0."x" = s1."z") AND (s0."x" = 123)}
 
-    assert_raise ArgumentError, ":select is not supported in update_all by MySQL", fn ->
+    assert_raise ArgumentError, ":select is not supported in update_all by Firebird", fn ->
       query = from(e in Schema, where: e.x == 123, select: e.x)
       update_all(query)
     end
@@ -698,7 +698,7 @@ defmodule Ecto.Adapters.FirebirdTest do
            ~s{DELETE s0.* FROM "schema" AS s0 } <>
            ~s{INNER JOIN "schema2" AS s1 ON s0."x" = s1."z" WHERE (s0."x" = 123)}
 
-    assert_raise ArgumentError, ":select is not supported in delete_all by MySQL", fn ->
+    assert_raise ArgumentError, ":select is not supported in delete_all by Firebird", fn ->
       query = from(e in Schema, where: e.x == 123, select: e.x)
       delete_all(query)
     end
@@ -942,7 +942,7 @@ defmodule Ecto.Adapters.FirebirdTest do
     query = insert("prefix", "schema", [], [[]], {:raise, [], []}, [])
     assert query == ~s{INSERT INTO "prefix"."schema" () VALUES ()}
 
-    assert_raise ArgumentError, ":returning is not supported in insert/insert_all by MySQL", fn ->
+    assert_raise ArgumentError, ":returning is not supported in insert/insert_all by Firebird", fn ->
       insert(nil, "schema", [:x, :y], [[:x, :y]], {:raise, [], []}, [:x, :y])
     end
   end
@@ -958,11 +958,11 @@ defmodule Ecto.Adapters.FirebirdTest do
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {[:x, :y], [], []}, [])
     assert query == ~s{INSERT INTO "schema" ("x","y") VALUES (?,?) ON DUPLICATE KEY UPDATE "x" = VALUES("x"),"y" = VALUES("y")}
 
-    assert_raise ArgumentError, "The :conflict_target option is not supported in insert/insert_all by MySQL", fn ->
+    assert_raise ArgumentError, "The :conflict_target option is not supported in insert/insert_all by Firebird", fn ->
       insert(nil, "schema", [:x, :y], [[:x, :y]], {[:x, :y], [], [:x]}, [])
     end
 
-    assert_raise ArgumentError, "Using a query with :where in combination with the :on_conflict option is not supported by MySQL", fn ->
+    assert_raise ArgumentError, "Using a query with :where in combination with the :on_conflict option is not supported by Firebird", fn ->
       update = from("schema", update: [set: [x: ^"foo"]], where: [z: "bar"]) |> plan(:update_all)
       insert(nil, "schema", [:x, :y], [[:x, :y]], {update, [], []}, [])
     end
@@ -1202,13 +1202,13 @@ defmodule Ecto.Adapters.FirebirdTest do
   end
 
   test "drop constraint" do
-    assert_raise ArgumentError, ~r/MySQL adapter does not support constraints/, fn ->
+    assert_raise ArgumentError, ~r/Firebird adapter does not support constraints/, fn ->
       execute_ddl({:drop, constraint(:products, "price_must_be_positive", prefix: :foo)})
     end
   end
 
   test "drop_if_exists constraint" do
-    assert_raise ArgumentError, ~r/MySQL adapter does not support constraints/, fn ->
+    assert_raise ArgumentError, ~r/Firebird adapter does not support constraints/, fn ->
       execute_ddl({:drop_if_exists, constraint(:products, "price_must_be_positive", prefix: :foo)})
     end
   end
@@ -1312,29 +1312,29 @@ defmodule Ecto.Adapters.FirebirdTest do
   end
 
   test "create unique index with condition" do
-    assert_raise ArgumentError, "MySQL adapter does not support where in indexes", fn ->
+    assert_raise ArgumentError, "Firebird adapter does not support where in indexes", fn ->
       create = {:create, index(:posts, [:permalink], unique: true, where: "public IS TRUE")}
       execute_ddl(create)
     end
   end
 
   test "create constraints" do
-    assert_raise ArgumentError, "MySQL adapter does not support check constraints", fn ->
+    assert_raise ArgumentError, "Firebird adapter does not support check constraints", fn ->
       create = {:create, constraint(:products, "foo", check: "price")}
       assert execute_ddl(create)
     end
 
-    assert_raise ArgumentError, "MySQL adapter does not support check constraints", fn ->
+    assert_raise ArgumentError, "Firebird adapter does not support check constraints", fn ->
       create = {:create, constraint(:products, "foo", check: "price", validate: false)}
       assert execute_ddl(create)
     end
 
-    assert_raise ArgumentError, "MySQL adapter does not support exclusion constraints", fn ->
+    assert_raise ArgumentError, "Firebird adapter does not support exclusion constraints", fn ->
       create = {:create, constraint(:products, "bar", exclude: "price")}
       assert execute_ddl(create)
     end
 
-    assert_raise ArgumentError, "MySQL adapter does not support exclusion constraints", fn ->
+    assert_raise ArgumentError, "Firebird adapter does not support exclusion constraints", fn ->
       create = {:create, constraint(:products, "bar", exclude: "price", validate: false)}
       assert execute_ddl(create)
     end
@@ -1379,7 +1379,7 @@ defmodule Ecto.Adapters.FirebirdTest do
   # Unsupported types and clauses
 
   test "lateral join with fragment" do
-    assert_raise Ecto.QueryError, ~r"join `:inner_lateral` not supported by MySQL", fn ->
+    assert_raise Ecto.QueryError, ~r"join `:inner_lateral` not supported by Firebird", fn ->
       Schema
       |> join(:inner_lateral, [p], q in fragment("SELECT * FROM schema2 AS s2 WHERE s2.id = ? AND s2.field = ?", p.x, ^10))
       |> select([p, q], {p.id, q.z})
@@ -1389,7 +1389,7 @@ defmodule Ecto.Adapters.FirebirdTest do
   end
 
   test "arrays" do
-    assert_raise Ecto.QueryError, ~r"Array type is not supported by MySQL", fn ->
+    assert_raise Ecto.QueryError, ~r"Array type is not supported by Firebird", fn ->
       query = Schema |> select([], fragment("?", [1, 2, 3])) |> plan()
       all(query)
     end

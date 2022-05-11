@@ -134,11 +134,11 @@ if Code.ensure_loaded?(Firebirdex) do
        insert_all(rows) | on_conflict(on_conflict, header)]
     end
     def insert(_prefix, _table, _header, _rows, _on_conflict, _returning) do
-      error!(nil, ":returning is not supported in insert/insert_all by MySQL")
+      error!(nil, ":returning is not supported in insert/insert_all by Firebird")
     end
 
     defp on_conflict({_, _, [_ | _]}, _header) do
-      error!(nil, "The :conflict_target option is not supported in insert/insert_all by MySQL")
+      error!(nil, "The :conflict_target option is not supported in insert/insert_all by Firebird")
     end
     defp on_conflict({:raise, _, []}, _header) do
       []
@@ -158,7 +158,7 @@ if Code.ensure_loaded?(Firebirdex) do
       [" ON DUPLICATE KEY " | update_all(query, "UPDATE ")]
     end
     defp on_conflict({_query, _, []}, _header) do
-      error!(nil, "Using a query with :where in combination with the :on_conflict option is not supported by MySQL")
+      error!(nil, "Using a query with :where in combination with the :on_conflict option is not supported by Firebird")
     end
 
     defp insert_all(rows) do
@@ -237,7 +237,7 @@ if Code.ensure_loaded?(Firebirdex) do
     defp distinct(%QueryExpr{expr: true}, _sources, _query),  do: "DISTINCT "
     defp distinct(%QueryExpr{expr: false}, _sources, _query), do: []
     defp distinct(%QueryExpr{expr: exprs}, _sources, query) when is_list(exprs) do
-      error!(query, "DISTINCT with multiple columns is not supported by MySQL")
+      error!(query, "DISTINCT with multiple columns is not supported by Firebird")
     end
 
     defp select([], _sources, _query),
@@ -247,7 +247,7 @@ if Code.ensure_loaded?(Firebirdex) do
         {:&, _, [idx]} ->
           case elem(sources, idx) do
             {source, _, nil} ->
-              error!(query, "MySQL does not support selecting all fields from #{source} without a schema. " <>
+              error!(query, "Firebird does not support selecting all fields from #{source} without a schema. " <>
                             "Please specify a schema or specify exactly which fields you want to select")
             {_, source, _} ->
               source
@@ -305,7 +305,7 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp update_op(command, _quoted_key, _value, _sources, query) do
-      error!(query, "Unknown update operation #{inspect command} for MySQL")
+      error!(query, "Unknown update operation #{inspect command} for Firebird")
     end
 
     defp using_join(%{joins: []}, _kind, _sources), do: {[], []}
@@ -344,7 +344,7 @@ if Code.ensure_loaded?(Firebirdex) do
     defp join_qual(:right, _), do: " RIGHT OUTER JOIN "
     defp join_qual(:full, _),  do: " FULL OUTER JOIN "
     defp join_qual(:cross, _), do: " CROSS JOIN "
-    defp join_qual(mode, q),   do: error!(q, "join `#{inspect mode}` not supported by MySQL")
+    defp join_qual(mode, q),   do: error!(q, "join `#{inspect mode}` not supported by Firebird")
 
     defp where(%{wheres: wheres} = query, sources) do
       boolean(" WHERE ", wheres, sources, query)
@@ -511,7 +511,7 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp expr({:filter, _, _}, _sources, query) do
-      error!(query, "MySQL adapter does not support aggregate filters")
+      error!(query, "Firebird adapter does not support aggregate filters")
     end
 
     defp expr(%Ecto.SubQuery{query: query}, sources, _query) do
@@ -520,7 +520,7 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp expr({:fragment, _, [kw]}, _sources, query) when is_list(kw) or tuple_size(kw) == 3 do
-      error!(query, "MySQL adapter does not support keyword or interpolated fragments")
+      error!(query, "Firebird adapter does not support keyword or interpolated fragments")
     end
 
     defp expr({:fragment, _, parts}, sources, query) do
@@ -542,7 +542,7 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp expr({:ilike, _, [_, _]}, _sources, query) do
-      error!(query, "ilike is not supported by MySQL")
+      error!(query, "ilike is not supported by Firebird")
     end
 
     defp expr({:over, _, [agg, name]}, sources, query) when is_atom(name) do
@@ -591,7 +591,7 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp expr(list, _sources, query) when is_list(list) do
-      error!(query, "Array type is not supported by MySQL")
+      error!(query, "Array type is not supported by Firebird")
     end
 
     defp expr(%Decimal{} = decimal, _sources, _query) do
@@ -626,7 +626,7 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp expr(literal, _sources, _query) when is_float(literal) do
-      # MySQL doesn't support float cast
+      # Firebird doesn't support float cast
       ["(0 + ", Float.to_string(literal), ?)]
     end
 
@@ -715,7 +715,7 @@ if Code.ensure_loaded?(Firebirdex) do
 
     def execute_ddl({:create, %Index{} = index}) do
       if index.where do
-        error!(nil, "MySQL adapter does not support where in indexes")
+        error!(nil, "Firebird adapter does not support where in indexes")
       end
 
       [["CREATE", if_do(index.unique, " UNIQUE"), " INDEX ",
@@ -728,12 +728,12 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     def execute_ddl({:create_if_not_exists, %Index{}}),
-      do: error!(nil, "MySQL adapter does not support create if not exists for index")
+      do: error!(nil, "Firebird adapter does not support create if not exists for index")
 
     def execute_ddl({:create, %Constraint{check: check}}) when is_binary(check),
-      do: error!(nil, "MySQL adapter does not support check constraints")
+      do: error!(nil, "Firebird adapter does not support check constraints")
     def execute_ddl({:create, %Constraint{exclude: exclude}}) when is_binary(exclude),
-      do: error!(nil, "MySQL adapter does not support exclusion constraints")
+      do: error!(nil, "Firebird adapter does not support exclusion constraints")
 
     def execute_ddl({:drop, %Index{} = index}) do
       [["DROP INDEX ",
@@ -743,13 +743,13 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     def execute_ddl({:drop, %Constraint{}}),
-      do: error!(nil, "MySQL adapter does not support constraints")
+      do: error!(nil, "Firebird adapter does not support constraints")
 
     def execute_ddl({:drop_if_exists, %Constraint{}}),
-      do: error!(nil, "MySQL adapter does not support constraints")
+      do: error!(nil, "Firebird adapter does not support constraints")
 
     def execute_ddl({:drop_if_exists, %Index{}}),
-      do: error!(nil, "MySQL adapter does not support drop if exists for index")
+      do: error!(nil, "Firebird adapter does not support drop if exists for index")
 
     def execute_ddl({:rename, %Table{} = current_table, %Table{} = new_table}) do
       [["RENAME TABLE ", quote_table(current_table.prefix, current_table.name),
@@ -764,7 +764,7 @@ if Code.ensure_loaded?(Firebirdex) do
     def execute_ddl(string) when is_binary(string), do: [string]
 
     def execute_ddl(keyword) when is_list(keyword),
-      do: error!(nil, "MySQL adapter does not support keyword lists in execute")
+      do: error!(nil, "Firebird adapter does not support keyword lists in execute")
 
     @impl true
     def ddl_logs(_), do: []
@@ -884,7 +884,7 @@ if Code.ensure_loaded?(Firebirdex) do
     defp options_expr(nil),
       do: []
     defp options_expr(keyword) when is_list(keyword),
-      do: error!(nil, "MySQL adapter does not support keyword lists in :options")
+      do: error!(nil, "Firebird adapter does not support keyword lists in :options")
     defp options_expr(options),
       do: [?\s, to_string(options)]
 
@@ -1030,7 +1030,7 @@ if Code.ensure_loaded?(Firebirdex) do
     defp ecto_size_to_db(type), do: ecto_to_db(type)
 
     defp ecto_to_db(type, query \\ nil)
-    defp ecto_to_db({:array, _}, query),           do: error!(query, "Array type is not supported by MySQL")
+    defp ecto_to_db({:array, _}, query),           do: error!(query, "Array type is not supported by Firebird")
     defp ecto_to_db(:id, _query),                  do: "integer"
     defp ecto_to_db(:serial, _query),              do: "bigint unsigned not null auto_increment"
     defp ecto_to_db(:bigserial, _query),           do: "bigint unsigned not null auto_increment"
@@ -1038,7 +1038,7 @@ if Code.ensure_loaded?(Firebirdex) do
     defp ecto_to_db(:string, _query),              do: "varchar"
     defp ecto_to_db(:float, _query),               do: "double"
     defp ecto_to_db(:binary, _query),              do: "blob"
-    defp ecto_to_db(:uuid, _query),                do: "binary(16)" # MySQL does not support uuid
+    defp ecto_to_db(:uuid, _query),                do: "binary(16)" # Firebird does not support uuid
     defp ecto_to_db(:map, _query),                 do: "json"
     defp ecto_to_db({:map, _}, _query),            do: "json"
     defp ecto_to_db(:time_usec, _query),           do: "time"
