@@ -88,7 +88,7 @@ defmodule Ecto.Adapters.FirebirdTest do
     query = "0posts" |> select([:x]) |> plan()
     assert all(query) == ~s{SELECT t0."x" FROM "0posts" AS t0}
 
-    assert_raise Ecto.QueryError, ~s{Firebird does not support selecting all fields from "posts" without a schema}, fn ->
+    assert_raise Ecto.QueryError, ~r{Firebird does not support selecting all fields from "posts" without a schema}, fn ->
       all from(p in "posts", select: p) |> plan()
     end
   end
