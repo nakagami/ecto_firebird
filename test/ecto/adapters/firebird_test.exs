@@ -206,7 +206,7 @@ defmodule Ecto.Adapters.FirebirdTest do
 
     assert update_all(query) ==
       ~s{WITH "target_rows" AS } <>
-      ~s{(SELECT s0."id" AS "id" FROM "schema" AS s0 ORDER BY s0."id" LIMIT 10 FOR UPDATE SKIP LOCKED) } <>
+      ~s{(SELECT s0."id" AS "id" FROM "schema" AS s0 ORDER BY s0."id" FETCH FIRST 10 ROWS ONLY  FOR UPDATE SKIP LOCKED) } <>
       ~s{UPDATE "schema" AS s0, "target_rows" AS t1 } <>
       ~s{SET s0."x" = 123 } <>
       ~s{WHERE (t1."id" = s0."id")}
@@ -224,7 +224,7 @@ defmodule Ecto.Adapters.FirebirdTest do
 
     assert delete_all(query) ==
       ~s{WITH "target_rows" AS } <>
-      ~s{(SELECT s0."id" AS "id" FROM "schema" AS s0 ORDER BY s0."id" LIMIT 10 FOR UPDATE SKIP LOCKED) } <>
+      ~s{(SELECT s0."id" AS "id" FROM "schema" AS s0 ORDER BY s0."id" FETCH FIRST 10 ROWS ONLY  FOR UPDATE SKIP LOCKED) } <>
       ~s{DELETE s0.* } <>
       ~s{FROM "schema" AS s0 } <>
       ~s{INNER JOIN "target_rows" AS t1 ON t1."id" = s0."id"}
@@ -324,7 +324,7 @@ defmodule Ecto.Adapters.FirebirdTest do
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
                ~s{UNION (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FETCH FIRST 40 ROWS ONLY  OFFSET 20 ROWS ) } <>
                ~s{UNION (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FETCH FIRST 60 ROWS ONLY  OFFSET 30 ROWS ) } <>
-               ~s{ORDER BY rand LIMIT 5 OFFSET 10}
+               ~s{ORDER BY rand FETCH ROWS ONLY 5 ROWS ONLY   OFFSET 10 ROWS }
 
     query = base_query |> union_all(^union_query1) |> union_all(^union_query2) |> plan()
 
@@ -368,7 +368,7 @@ defmodule Ecto.Adapters.FirebirdTest do
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
                ~s{INTERSECT (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
                ~s{INTERSECT (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
-               ~s{ORDER BY rand LIMIT 5 OFFSET 10}
+               ~s{ORDER BY rand FETCH FIRST 5 ROWS ONLY  OFFSET 10 ROWS }
 
     query =
       base_query |> intersect_all(^intersect_query1) |> intersect_all(^intersect_query2) |> plan()
@@ -615,7 +615,7 @@ defmodule Ecto.Adapters.FirebirdTest do
       ~s{GROUP BY ?, ? HAVING (?) AND (?) } <>
       ~s{UNION (SELECT s0."id", ? FROM "schema1" AS s0 WHERE (?)) } <>
       ~s{UNION ALL (SELECT s0."id", ? FROM "schema2" AS s0 WHERE (?)) } <>
-      ~s{ORDER BY ? LIMIT ? OFFSET ?}
+      ~s{ORDER BY ? FETCH FIRST ? ROWS ONLY  OFFSET ? ROWS}
 
     assert all(query) == String.trim(result)
   end
