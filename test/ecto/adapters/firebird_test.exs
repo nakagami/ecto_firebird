@@ -324,15 +324,15 @@ defmodule Ecto.Adapters.FirebirdTest do
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
                ~s{UNION (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FETCH FIRST 40 ROWS ONLY  OFFSET 20 ROWS ) } <>
                ~s{UNION (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FETCH FIRST 60 ROWS ONLY  OFFSET 30 ROWS ) } <>
-               ~s{ORDER BY rand FETCH ROWS ONLY 5 ROWS ONLY   OFFSET 10 ROWS }
+               ~s{ORDER BY rand FETCH FIRST 5 ROWS ONLY  OFFSET 10 ROWS }
 
     query = base_query |> union_all(^union_query1) |> union_all(^union_query2) |> plan()
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{UNION ALL (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
-               ~s{UNION ALL (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
-               ~s{ORDER BY rand LIMIT 5 OFFSET 10}
+               ~s{UNION ALL (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FETCH FIRST 40 ROWS ONLY  OFFSET 20 ROWS ) } <>
+               ~s{UNION ALL (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FETCH FIRST 60 ROWS ONLY  OFFSET 30 ROWS ) } <>
+               ~s{ORDER BY rand FETCH FIRST 5 ROWS ONLY  OFFSET 10 ROWS }
   end
 
   test "except and except all" do
@@ -344,17 +344,17 @@ defmodule Ecto.Adapters.FirebirdTest do
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{EXCEPT (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FETCH FIRST 40 ROWS ONLY  OFFSET 20 ROWS) } <>
-               ~s{EXCEPT (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FETCH FIRST 60 ROWS ONLY  OFFSET 30 ROWS) } <>
-               ~s{ORDER BY rand FETCH FIRST 5 ROWS ONLY  OFFSET 10 ROWS}
+               ~s{EXCEPT (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FETCH FIRST 40 ROWS ONLY  OFFSET 20 ROWS ) } <>
+               ~s{EXCEPT (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FETCH FIRST 60 ROWS ONLY  OFFSET 30 ROWS ) } <>
+               ~s{ORDER BY rand FETCH FIRST 5 ROWS ONLY  OFFSET 10 ROWS }
 
     query = base_query |> except_all(^except_query1) |> except_all(^except_query2) |> plan()
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{EXCEPT ALL (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
-               ~s{EXCEPT ALL (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
-               ~s{ORDER BY rand LIMIT 5 OFFSET 10}
+               ~s{EXCEPT ALL (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FETCH FIRST 40 ROWS ONLY  OFFSET 20 ROWS ) } <>
+               ~s{EXCEPT ALL (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FETCH FIRST 60 ROWS ONLY  OFFSET 30 ROWS ) } <>
+               ~s{ORDER BY rand FETCH FIRST 5 ROWS ONLY  OFFSET 10 ROWS }
   end
 
   test "intersect and intersect all" do
@@ -366,8 +366,8 @@ defmodule Ecto.Adapters.FirebirdTest do
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{INTERSECT (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
-               ~s{INTERSECT (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
+               ~s{INTERSECT (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FETCH FIRST 40 ROWS ONLY  OFFSET 20 ROWS ) } <>
+               ~s{INTERSECT (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FETCH FIRST 60 ROWS ONLY  OFFSET 30 ROWS ) } <>
                ~s{ORDER BY rand FETCH FIRST 5 ROWS ONLY  OFFSET 10 ROWS }
 
     query =
@@ -375,9 +375,9 @@ defmodule Ecto.Adapters.FirebirdTest do
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{INTERSECT ALL (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20) } <>
-               ~s{INTERSECT ALL (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30) } <>
-               ~s{ORDER BY rand LIMIT 5 OFFSET 10}
+               ~s{INTERSECT ALL (SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FETCH FIRST 40 ROWS ONLY  OFFSET 20 ROWS ) } <>
+               ~s{INTERSECT ALL (SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FETCH FIRST 60 ROWS ONLY  OFFSET 30 ROWS ) } <>
+               ~s{ORDER BY rand FETCH FIRST 5 ROWS ONLY  OFFSET 10 ROWS }
   end
 
   test "limit and offset" do
@@ -617,7 +617,7 @@ defmodule Ecto.Adapters.FirebirdTest do
       ~s{UNION ALL (SELECT s0."id", ? FROM "schema2" AS s0 WHERE (?)) } <>
       ~s{ORDER BY ? FETCH FIRST ? ROWS ONLY  OFFSET ? ROWS}
 
-    assert all(query) == String.trim(result)
+    assert String.trim(all(query)) == String.trim(result)
   end
 
   test "fragments allow ? to be escaped with backslash" do
