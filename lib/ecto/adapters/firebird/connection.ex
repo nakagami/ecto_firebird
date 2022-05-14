@@ -858,7 +858,7 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp after_expr(nil), do: []
-    defp after_expr(column) when is_atom(column) or is_binary(column), do: " AFTER `#{column}`"
+    defp after_expr(column) when is_atom(column) or is_binary(column), do: ~s{ AFTER "#{column}"}
     defp after_expr(_), do: []
 
     defp null_expr(false), do: " NOT NULL"
