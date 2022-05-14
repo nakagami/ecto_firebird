@@ -14,42 +14,18 @@ defmodule Ecto.Adapters.Firebird do
 
     * `:protocol` - Set to `:socket` for using UNIX domain socket, or `:tcp` for TCP
       (default: `:socket`)
-    * `:socket` - Connect to Firebird via UNIX sockets in the given path.
     * `:hostname` - Server hostname
-    * `:port` - Server port (default: 3306)
+    * `:port` - Server port (default: 3305)
     * `:username` - Username
     * `:password` - User password
     * `:database` - the database to connect to
     * `:pool` - The connection pool module, defaults to `DBConnection.ConnectionPool`
-    * `:ssl` - Set to true if ssl should be used (default: false)
-    * `:ssl_opts` - A list of ssl options, see Erlang's `ssl` docs
-    * `:connect_timeout` - The timeout for establishing new connections (default: 5000)
-    * `:cli_protocol` - The protocol used for the mysql client connection (default: `"tcp"`).
-      This option is only used for `mix ecto.load` and `mix ecto.dump`,
-      via the `mysql` command. For more information, please check
-      [Firebird docs](https://dev.mysql.com/doc/en/connecting.html)
-    * `:socket_options` - Specifies socket configuration
     * `:show_sensitive_data_on_connection_error` - show connection data and
       configuration whenever there is an error attempting to connect to the
       database
 
-  The `:socket_options` are particularly useful when configuring the size
-  of both send and receive buffers. For example, when Ecto starts with a
-  pool of 20 connections, the memory usage may quickly grow from 20MB to
-  50MB based on the operating system default values for TCP buffers. It is
-  advised to stick with the operating system defaults but they can be
-  tweaked if desired:
-
-      socket_options: [recbuf: 8192, sndbuf: 8192]
-
   We also recommend developers to consult the `Firebirdex.start_link/1` documentation
   for a complete listing of all supported options.
-
-  ### Storage options
-
-    * `:charset` - the database encoding (default: "utf8mb4")
-    * `:collation` - the collation order
-    * `:dump_path` - where to place dumped structures
 
   ### After connect callback
 
@@ -214,7 +190,7 @@ defmodule Ecto.Adapters.Firebird do
 
   @impl true
   def supports_ddl_transaction? do
-    false
+    true
   end
 
   @impl true
@@ -282,36 +258,6 @@ defmodule Ecto.Adapters.Firebird do
   defp last_insert_id(_key, 0), do: []
   defp last_insert_id(key, last_insert_id), do: [{key, last_insert_id}]
 
-  @impl true
-  def structure_dump(default, config) do
-    table = config[:migration_source] || "schema_migrations"
-    path  = config[:dump_path] || Path.join(default, "structure.sql")
-
-    with {:ok, versions} <- select_versions(table, config),
-         {:ok, contents} <- mysql_dump(config),
-         {:ok, contents} <- append_versions(table, versions, contents) do
-      File.mkdir_p!(Path.dirname(path))
-      File.write!(path, contents)
-      {:ok, path}
-    end
-  end
-
-  defp select_versions(table, config) do
-    case run_query(~s[SELECT version FROM "#{table}" ORDER BY version], config) do
-      {:ok, %{rows: rows}} -> {:ok, Enum.map(rows, &hd/1)}
-      {:error, %{mysql: %{name: :ER_NO_SUCH_TABLE}}} -> {:ok, []}
-      {:error, _} = error -> error
-      {:exit, exit} -> {:error, exit_to_exception(exit)}
-    end
-  end
-
-  defp mysql_dump(config) do
-    case run_with_cmd("mysqldump", config, ["--no-data", "--routines", config[:database]]) do
-      {output, 0} -> {:ok, output}
-      {output, _} -> {:error, output}
-    end
-  end
-
   defp append_versions(_table, [], contents) do
     {:ok, contents}
   end
@@ -319,21 +265,6 @@ defmodule Ecto.Adapters.Firebird do
     {:ok,
       contents <>
       Enum.map_join(versions, &~s[INSERT INTO "#{table}" (version) VALUES (#{&1});\n])}
-  end
-
-  @impl true
-  def structure_load(default, config) do
-    path = config[:dump_path] || Path.join(default, "structure.sql")
-
-    args = [
-      "--execute", "SET FOREIGN_KEY_CHECKS = 0; SOURCE #{path}; SET FOREIGN_KEY_CHECKS = 1",
-      "--database", config[:database]
-    ]
-
-    case run_with_cmd("mysql", config, args) do
-      {_output, 0} -> {:ok, path}
-      {output, _}  -> {:error, output}
-    end
   end
 
   ## Helpers
@@ -376,37 +307,4 @@ defmodule Ecto.Adapters.Firebird do
 
   defp exit_to_exception(reason), do: RuntimeError.exception(Exception.format_exit(reason))
 
-  defp run_with_cmd(cmd, opts, opt_args) do
-    unless System.find_executable(cmd) do
-      raise ~s{could not find executable "#{cmd}" in path, } <>
-            ~s{please guarantee it is available before running ecto commands}
-    end
-
-    env =
-      if password = opts[:password] do
-        [{"MYSQL_PWD", password}]
-      else
-        []
-      end
-
-    host     = opts[:hostname] || System.get_env("MYSQL_HOST") || "localhost"
-    port     = opts[:port] || System.get_env("MYSQL_TCP_PORT") || "3306"
-    protocol = opts[:cli_protocol] || System.get_env("MYSQL_CLI_PROTOCOL") || "tcp"
-
-    user_args =
-      if username = opts[:username] do
-        ["--user", username]
-      else
-        []
-      end
-
-    args =
-      [
-        "--host", host,
-        "--port", to_string(port),
-        "--protocol", protocol
-      ] ++ user_args ++ opt_args
-
-    System.cmd(cmd, args, env: env, stderr_to_stdout: true)
-  end
 end
