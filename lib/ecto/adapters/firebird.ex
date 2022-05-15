@@ -27,26 +27,10 @@ defmodule Ecto.Adapters.Firebird do
   We also recommend developers to consult the `Firebirdex.start_link/1` documentation
   for a complete listing of all supported options.
 
-  ### After connect callback
-
-  If you want to execute a callback as soon as connection is established
-  to the database, you can use the `:after_connect` configuration. For
-  example, in your repository configuration you can add:
-
-      after_connect: {MyXQL, :query!, ["SET variable = value", []]}
-
-  You can also specify your own module that will receive the MyXQL
-  connection as argument.
-
   ## Limitations
 
   There are some limitations when using Ecto with Firebird that one
   needs to be aware of.
-
-  ### Engine
-
-  Tables created by Ecto are guaranteed to use InnoDB, regardless
-  of the Firebird version.
 
   ### UUIDs
 
@@ -65,22 +49,10 @@ defmodule Ecto.Adapters.Firebird do
   automatically commits after some commands like CREATE TABLE.
   Therefore Firebird migrations does not run inside transactions.
 
-  ## Old Firebird versions
-
   ### JSON support
 
-  Firebird introduced a native JSON type in v5.7.8, if your server is
-  using this version or higher, you may use `:map` type for your
-  column in migration:
-
-      add :some_field, :map
-
-  If you're using older server versions, use a `TEXT` field instead:
-
-      add :some_field, :text
-
-  in either case, the adapter will automatically encode/decode the
-  value from JSON.
+  Even though the adapter will convert `:map` fields into JSON back and forth,
+  actual value is stored in Text column.
 
   ### usec in datetime
 
