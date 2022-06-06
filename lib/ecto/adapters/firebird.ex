@@ -12,17 +12,12 @@ defmodule Ecto.Adapters.Firebird do
 
   ### Connection options
 
-    * `:protocol` - Set to `:socket` for using UNIX domain socket, or `:tcp` for TCP
-      (default: `:socket`)
     * `:hostname` - Server hostname
     * `:port` - Server port (default: 3305)
     * `:username` - Username
-    * `:password` - User password
+    * `:password` - User password (or use FIREBIRD_PASSWORD environment)
     * `:database` - the database to connect to
     * `:pool` - The connection pool module, defaults to `DBConnection.ConnectionPool`
-    * `:show_sensitive_data_on_connection_error` - show connection data and
-      configuration whenever there is an error attempting to connect to the
-      database
 
   We also recommend developers to consult the `Firebirdex.start_link/1` documentation
   for a complete listing of all supported options.
@@ -37,35 +32,11 @@ defmodule Ecto.Adapters.Firebird do
   Firebird does not support UUID types. Ecto emulates them by using
   `binary(16)`.
 
-  ### Read after writes
-
-  Because Firebird does not support RETURNING clauses in INSERT and
-  UPDATE, it does not support the `:read_after_writes` option of
-  `Ecto.Schema.field/3`.
-
-  ### DDL Transaction
-
-  Firebird does not support migrations inside transactions as it
-  automatically commits after some commands like CREATE TABLE.
-  Therefore Firebird migrations does not run inside transactions.
-
   ### JSON support
 
   Even though the adapter will convert `:map` fields into JSON back and forth,
   actual value is stored in Text column.
 
-  ### usec in datetime
-
-  Old Firebird versions did not support usec in datetime while
-  more recent versions would round or truncate the usec value.
-
-  Therefore, in case the user decides to use microseconds in
-  datetimes and timestamps with Firebird, be aware of such
-  differences and consult the documentation for your Firebird
-  version.
-
-  If your version of Firebird supports microsecond precision, you
-  will be able to utilize Ecto's usec types.
   """
 
   # Inherit all behaviour from Ecto.Adapters.SQL
