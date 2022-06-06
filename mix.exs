@@ -11,6 +11,7 @@ defmodule EctoFirebird.MixProject do
       name: "Ecto Firebird",
       description: "Firebird Ecto3 adapter",
       start_permanent: Mix.env() == :prod,
+      source_url: "https://github.com/nakagami/firebirdex",
       package: package(),
       docs: docs(),
       deps: deps()
