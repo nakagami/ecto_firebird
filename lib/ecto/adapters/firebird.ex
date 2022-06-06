@@ -6,10 +6,6 @@ defmodule Ecto.Adapters.Firebird do
 
   ## Options
 
-  Firebird options split in different categories described
-  below. All options can be given via the repository
-  configuration:
-
   ### Connection options
 
     * `:hostname` - Server hostname
@@ -39,10 +35,8 @@ defmodule Ecto.Adapters.Firebird do
 
   """
 
-  # Inherit all behaviour from Ecto.Adapters.SQL
-  use Ecto.Adapters.SQL, driver: :myxql
+  use Ecto.Adapters.SQL, driver: :firebirdex
 
-  # And provide a custom storage implementation
   @behaviour Ecto.Adapter.Storage
   @behaviour Ecto.Adapter.Structure
 
