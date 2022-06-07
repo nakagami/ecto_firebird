@@ -539,19 +539,19 @@ defmodule Ecto.Adapters.FirebirdTest do
     assert all(query) == ~s{SELECT ((s0."x" = ?) OR s0."x" IN (?,?,?)) OR (s0."x" = ?) FROM "schema" AS s0}
   end
 
-  test "in subquery" do
-    posts = subquery("posts" |> where(title: ^"hello") |> select([p], p.id))
-    query = "comments" |> where([c], c.post_id in subquery(posts)) |> select([c], c.x) |> plan()
-    assert all(query) ==
-           ~s{SELECT c0."x" FROM "comments" AS c0 } <>
-           ~s{WHERE (c0."post_id" IN (SELECT sp0."id" FROM "posts" AS sp0 WHERE (sp0."title" = ?)))}
-
-    posts = subquery("posts" |> where(title: parent_as(:comment).subtitle) |> select([p], p.id))
-    query = "comments" |> from(as: :comment) |> where([c], c.post_id in subquery(posts)) |> select([c], c.x) |> plan()
-    assert all(query) ==
-           ~s{SELECT c0."x" FROM "comments" AS c0 } <>
-           ~s{WHERE (c0."post_id" IN (SELECT sp0."id" FROM "posts" AS sp0 WHERE (sp0."title" = c0."subtitle")))}
-  end
+#  test "in subquery" do
+#    posts = subquery("posts" |> where(title: ^"hello") |> select([p], p.id))
+#    query = "comments" |> where([c], c.post_id in subquery(posts)) |> select([c], c.x) |> plan()
+#    assert all(query) ==
+#           ~s{SELECT c0."x" FROM "comments" AS c0 } <>
+#           ~s{WHERE (c0."post_id" IN (SELECT sp0."id" FROM "posts" AS sp0 WHERE (sp0."title" = ?)))}
+#
+#    posts = subquery("posts" |> where(title: parent_as(:comment).subtitle) |> select([p], p.id))
+#    query = "comments" |> from(as: :comment) |> where([c], c.post_id in subquery(posts)) |> select([c], c.x) |> plan()
+#    assert all(query) ==
+#           ~s{SELECT c0."x" FROM "comments" AS c0 } <>
+#           ~s{WHERE (c0."post_id" IN (SELECT sp0."id" FROM "posts" AS sp0 WHERE (sp0."title" = c0."subtitle")))}
+#  end
 
   test "having" do
     query = Schema |> having([p], p.x == p.x) |> select([p], p.x) |> plan()
@@ -834,25 +834,25 @@ defmodule Ecto.Adapters.FirebirdTest do
            ~s{SELECT TRUE FROM "posts" AS p0 INNER JOIN "comments" AS c1 ON p0."x" = c1."z"}
   end
 
-  test "join with subquery" do
-    posts = subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, y: r.y}))
-    query = "comments" |> join(:inner, [c], p in subquery(posts), on: true) |> select([_, p], p.x) |> plan()
-    assert all(query) ==
-           ~s{SELECT s1."x" FROM "comments" AS c0 } <>
-           ~s{INNER JOIN (SELECT sp0."x" AS "x", sp0."y" AS "y" FROM "posts" AS sp0 WHERE (sp0."title" = ?)) AS s1 ON TRUE}
-
-    posts = subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, z: r.y}))
-    query = "comments" |> join(:inner, [c], p in subquery(posts), on: true) |> select([_, p], p) |> plan()
-    assert all(query) ==
-           ~s{SELECT s1."x", s1."z" FROM "comments" AS c0 } <>
-           ~s{INNER JOIN (SELECT sp0."x" AS "x", sp0."y" AS "z" FROM "posts" AS sp0 WHERE (sp0."title" = ?)) AS s1 ON TRUE}
-
-    posts = subquery("posts" |> where(title: parent_as(:comment).subtitle) |> select([r], r.title))
-    query = "comments" |> from(as: :comment) |> join(:inner, [c], p in subquery(posts)) |> select([_, p], p) |> plan()
-    assert all(query) ==
-           ~s{SELECT s1."title" FROM "comments" AS c0 } <>
-           ~s{INNER JOIN (SELECT sp0."title" AS "title" FROM "posts" AS sp0 WHERE (sp0."title" = c0."subtitle")) AS s1 ON TRUE}
-  end
+#  test "join with subquery" do
+#    posts = subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, y: r.y}))
+#    query = "comments" |> join(:inner, [c], p in subquery(posts), on: true) |> select([_, p], p.x) |> plan()
+#    assert all(query) ==
+#           ~s{SELECT s1."x" FROM "comments" AS c0 } <>
+#           ~s{INNER JOIN (SELECT sp0."x" AS "x", sp0."y" AS "y" FROM "posts" AS sp0 WHERE (sp0."title" = ?)) AS s1 ON TRUE}
+#
+#    posts = subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, z: r.y}))
+#    query = "comments" |> join(:inner, [c], p in subquery(posts), on: true) |> select([_, p], p) |> plan()
+#    assert all(query) ==
+#           ~s{SELECT s1."x", s1."z" FROM "comments" AS c0 } <>
+#           ~s{INNER JOIN (SELECT sp0."x" AS "x", sp0."y" AS "z" FROM "posts" AS sp0 WHERE (sp0."title" = ?)) AS s1 ON TRUE}
+#
+#    posts = subquery("posts" |> where(title: parent_as(:comment).subtitle) |> select([r], r.title))
+#    query = "comments" |> from(as: :comment) |> join(:inner, [c], p in subquery(posts)) |> select([_, p], p) |> plan()
+#    assert all(query) ==
+#           ~s{SELECT s1."title" FROM "comments" AS c0 } <>
+#           ~s{INNER JOIN (SELECT sp0."title" AS "title" FROM "posts" AS sp0 WHERE (sp0."title" = c0."subtitle")) AS s1 ON TRUE}
+#  end
 
   test "join with prefix" do
     query = Schema |> join(:inner, [p], q in Schema2, on: p.x == q.z) |> select([], true) |> Map.put(:prefix, "prefix") |> plan()
