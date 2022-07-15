@@ -42,12 +42,12 @@ defmodule Ecto.Adapters.Firebird do
   ## Custom Firebird types
 
   @impl true
-  def loaders({:map, _}, type),   do: [&json_decode/1, &Ecto.Type.embedded_load(type, &1, :json)]
-  def loaders(:map, type),        do: [&json_decode/1, type]
-  def loaders(:float, type),      do: [&float_decode/1, type]
-  def loaders(:boolean, type),    do: [&bool_decode/1, type]
-  def loaders(:binary_id, type),  do: [Ecto.UUID, type]
-  def loaders(_, type),           do: [type]
+  def loaders({:map, _}, type), do: [&json_decode/1, &Ecto.Type.embedded_load(type, &1, :json)]
+  def loaders(:map, type), do: [&json_decode/1, type]
+  def loaders(:float, type), do: [&float_decode/1, type]
+  def loaders(:boolean, type), do: [&bool_decode/1, type]
+  def loaders(:binary_id, type), do: [Ecto.UUID, type]
+  def loaders(_, type), do: [type]
 
   defp bool_decode(<<0>>), do: {:ok, false}
   defp bool_decode(<<1>>), do: {:ok, true}
@@ -67,7 +67,9 @@ defmodule Ecto.Adapters.Firebird do
 
   @impl true
   def storage_up(opts) do
-    database = Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
+    database =
+      Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
+
     opts = Keyword.delete(opts, :database)
     charset = opts[:charset] || "utf8mb4"
 
@@ -78,33 +80,42 @@ defmodule Ecto.Adapters.Firebird do
     case run_query(command, opts) do
       {:ok, _} ->
         :ok
+
       {:error, %{mysql: %{name: :ER_DB_CREATE_EXISTS}}} ->
         {:error, :already_up}
+
       {:error, error} ->
         {:error, Exception.message(error)}
+
       {:exit, exit} ->
         {:error, exit_to_exception(exit)}
     end
   end
 
-  defp concat_if(content, nil, _fun),  do: content
+  defp concat_if(content, nil, _fun), do: content
   defp concat_if(content, value, fun), do: content <> " " <> fun.(value)
 
   @impl true
   def storage_down(opts) do
-    database = Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
+    database =
+      Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
+
     opts = Keyword.delete(opts, :database)
     command = ~s{DROP DATABASE "#{database}"}
 
     case run_query(command, opts) do
       {:ok, _} ->
         :ok
+
       {:error, %{mysql: %{name: :ER_DB_DROP_EXISTS}}} ->
         {:error, :already_down}
+
       {:error, %{mysql: %{name: :ER_BAD_DB_ERROR}}} ->
         {:error, :already_down}
+
       {:exit, :killed} ->
         {:error, :already_down}
+
       {:exit, exit} ->
         {:error, exit_to_exception(exit)}
     end
@@ -112,10 +123,13 @@ defmodule Ecto.Adapters.Firebird do
 
   @impl Ecto.Adapter.Storage
   def storage_status(opts) do
-    database = Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
+    database =
+      Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
+
     opts = Keyword.delete(opts, :database)
 
-    check_database_query = "SELECT schema_name FROM information_schema.schemata WHERE schema_name = '#{database}'"
+    check_database_query =
+      "SELECT schema_name FROM information_schema.schemata WHERE schema_name = '#{database}'"
 
     case run_query(check_database_query, opts) do
       {:ok, %{num_rows: 0}} -> :down
@@ -145,10 +159,13 @@ defmodule Ecto.Adapters.Firebird do
           lock_name = "\"ecto_#{inspect(repo)}\""
 
           try do
-            {:ok, _} = Ecto.Adapters.SQL.query(meta, "SELECT GET_LOCK(#{lock_name}, -1)", [], opts)
+            {:ok, _} =
+              Ecto.Adapters.SQL.query(meta, "SELECT GET_LOCK(#{lock_name}, -1)", [], opts)
+
             fun.()
           after
-            {:ok, _} = Ecto.Adapters.SQL.query(meta, "SELECT RELEASE_LOCK(#{lock_name})", [], opts)
+            {:ok, _} =
+              Ecto.Adapters.SQL.query(meta, "SELECT RELEASE_LOCK(#{lock_name})", [], opts)
           end
         end)
 
@@ -170,23 +187,27 @@ defmodule Ecto.Adapters.Firebird do
       |> Keyword.put(:backoff_type, :stop)
       |> Keyword.put(:max_restarts, 0)
 
-    task = Task.Supervisor.async_nolink(Ecto.Adapters.SQL.StorageSupervisor, fn ->
-      {:ok, conn} = Firebirdex.start_link(opts)
+    task =
+      Task.Supervisor.async_nolink(Ecto.Adapters.SQL.StorageSupervisor, fn ->
+        {:ok, conn} = Firebirdex.start_link(opts)
 
-      value = Firebirdex.query(conn, sql, [], opts)
-      GenServer.stop(conn)
-      value
-    end)
+        value = Firebirdex.query(conn, sql, [], opts)
+        GenServer.stop(conn)
+        value
+      end)
 
     timeout = Keyword.get(opts, :timeout, 15_000)
 
     case Task.yield(task, timeout) || Task.shutdown(task) do
       {:ok, {:ok, result}} ->
         {:ok, result}
+
       {:ok, {:error, error}} ->
         {:error, error}
+
       {:exit, exit} ->
         {:exit, exit}
+
       nil ->
         {:error, RuntimeError.exception("command timed out")}
     end
@@ -197,5 +218,4 @@ defmodule Ecto.Adapters.Firebird do
        do: error
 
   defp exit_to_exception(reason), do: RuntimeError.exception(Exception.format_exit(reason))
-
 end

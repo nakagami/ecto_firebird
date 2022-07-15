@@ -20,6 +20,11 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     @impl true
+    def stream(_conn, _sql, _params, _opts) do
+      error!(nil, "Repo.stream is not supported in Firebird adapter")
+    end
+
+    @impl true
     def query(conn, sql, params, opts) do
       opts = Keyword.put_new(opts, :query_type, :binary_then_text)
       Firebirdex.query(conn, sql, params, opts)
@@ -34,32 +39,30 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     @impl true
-    def stream(conn, sql, params, opts) do
-      Firebirdex.stream(conn, sql, params, opts)
-    end
-
-    @impl true
-    def to_constraints(%Firebirdex.Error{number: 335544349, reason: reason}, _opts) do
+    def to_constraints(%Firebirdex.Error{number: 335_544_349, reason: reason}, _opts) do
       # unique key constraint
       case :binary.split(reason, "\"") do
         [_, name, _] -> [unique: name]
         _ -> []
       end
     end
-    def to_constraints(%Firebirdex.Error{number: 335544466, reason: reason}, _opts) do
+
+    def to_constraints(%Firebirdex.Error{number: 335_544_466, reason: reason}, _opts) do
       # foreign key constraint
       case :binary.split(reason, "\"") do
         [_, name, _, _, _] -> [foreign_key: name]
         _ -> []
       end
     end
-    def to_constraints(%Firebirdex.Error{number: 335544558, reason: reason}, _opts) do
+
+    def to_constraints(%Firebirdex.Error{number: 335_544_558, reason: reason}, _opts) do
       # check constraint
       case :binary.split(reason, "\"") do
         [_, name, _, _, _] -> [check: name]
         _ -> []
       end
     end
+
     def to_constraints(_, _),
       do: []
 
@@ -86,7 +89,20 @@ if Code.ensure_loaded?(Firebirdex) do
       offset = offset(query, sources)
       lock = lock(query, sources)
 
-      [cte, select, from, join, where, group_by, having, window, combinations, order_by, limit, offset | lock]
+      [
+        cte,
+        select,
+        from,
+        join,
+        where,
+        group_by,
+        having,
+        window,
+        combinations,
+        order_by,
+        limit,
+        offset | lock
+      ]
     end
 
     @impl true
@@ -101,15 +117,16 @@ if Code.ensure_loaded?(Firebirdex) do
       cte = cte(query, sources)
       {from, name} = get_source(query, sources, 0, source)
 
-      fields = if prefix do
-        update_fields(:on_conflict, query, sources)
-      else
-        update_fields(:update, query, sources)
-      end
+      fields =
+        if prefix do
+          update_fields(:on_conflict, query, sources)
+        else
+          update_fields(:update, query, sources)
+        end
 
       {join, wheres} = using_join(query, :update_all, sources)
       prefix = prefix || ["UPDATE ", from, " AS ", name, join, " SET "]
-      where  = where(%{query | wheres: wheres ++ query.wheres}, sources)
+      where = where(%{query | wheres: wheres ++ query.wheres}, sources)
 
       [cte, prefix, fields | where]
     end
@@ -124,79 +141,68 @@ if Code.ensure_loaded?(Firebirdex) do
       cte = cte(query, sources)
       {_, name, _} = elem(sources, 0)
 
-      from   = from(query, sources)
-      join   = join(query, sources)
-      where  = where(query, sources)
+      from = from(query, sources)
+      join = join(query, sources)
+      where = where(query, sources)
 
       [cte, "DELETE ", name, ".*", from, join | where]
     end
 
     @impl true
-    def insert(prefix, table, header, rows, on_conflict, []) do
+    def insert(prefix, table, [], [[]], on_conflict, returning, []) do
+      [
+        "INSERT INTO ",
+        quote_table(prefix, table),
+        insert_as(on_conflict),
+        " DEFAULT VALUES",
+        returning(returning)
+      ]
+    end
+
+    @impl true
+    def insert(prefix, table, header, rows, on_conflict, returning, _placeholders) do
       fields = quote_names(header)
-      ["INSERT INTO ", quote_table(prefix, table), " (", fields, ") VALUES ",
-       insert_all(rows) | on_conflict(on_conflict, header)]
-    end
-    def insert(_prefix, _table, _header, _rows, _on_conflict, _returning) do
-      error!(nil, ":returning is not supported in insert/insert_all by Firebird")
-    end
 
-    defp on_conflict({_, _, [_ | _]}, _header) do
-      error!(nil, "The :conflict_target option is not supported in insert/insert_all by Firebird")
+      [
+        "INSERT INTO ",
+        quote_table(prefix, table),
+        insert_as(on_conflict),
+        " (",
+        fields,
+        ") ",
+        insert_all(rows, on_conflict),
+        on_conflict(on_conflict, header),
+        returning(returning)
+      ]
     end
-    defp on_conflict({:raise, _, []}, _header) do
-      []
-    end
-    defp on_conflict({:nothing, _, []}, [field | _]) do
-      quoted = quote_name(field)
-      [" ON DUPLICATE KEY UPDATE ", quoted, " = " | quoted]
-    end
-    defp on_conflict({fields, _, []}, _header) when is_list(fields) do
-      [" ON DUPLICATE KEY UPDATE " |
-       intersperse_map(fields, ?,, fn field ->
-         quoted = quote_name(field)
-         [quoted, " = VALUES(", quoted, ?)]
-       end)]
-    end
-    defp on_conflict({%{wheres: []} = query, _, []}, _header) do
-      [" ON DUPLICATE KEY " | update_all(query, "UPDATE ")]
-    end
-    defp on_conflict({_query, _, []}, _header) do
-      error!(nil, "Using a query with :where in combination with the :on_conflict option is not supported by Firebird")
-    end
-
-    defp insert_all(rows) do
-      intersperse_map(rows, ?,, fn row ->
-        [?(, intersperse_map(row, ?,, &insert_all_value/1), ?)]
-      end)
-    end
-
-    defp insert_all_value(nil), do: "DEFAULT"
-    defp insert_all_value({%Ecto.Query{} = query, _params_counter}), do: [?(, all(query), ?)]
-    defp insert_all_value(_),   do: '?'
 
     @impl true
     def update(prefix, table, fields, filters, _returning) do
       fields = intersperse_map(fields, ", ", &[quote_name(&1), " = ?"])
-      filters = intersperse_map(filters, " AND ", fn
-        {field, nil} ->
-          [quote_name(field), " IS NULL"]
 
-        {field, _value} ->
-          [quote_name(field), " = ?"]
-      end)
+      filters =
+        intersperse_map(filters, " AND ", fn
+          {field, nil} ->
+            [quote_name(field), " IS NULL"]
+
+          {field, _value} ->
+            [quote_name(field), " = ?"]
+        end)
+
       ["UPDATE ", quote_table(prefix, table), " SET ", fields, " WHERE " | filters]
     end
 
     @impl true
     def delete(prefix, table, filters, _returning) do
-      filters = intersperse_map(filters, " AND ", fn
-        {field, nil} ->
-          [quote_name(field), " IS NULL"]
+      filters =
+        intersperse_map(filters, " AND ", fn
+          {field, nil} ->
+            [quote_name(field), " IS NULL"]
 
-        {field, _value} ->
-          [quote_name(field), " = ?"]
-      end)
+          {field, _value} ->
+            [quote_name(field), " = ?"]
+        end)
+
       ["DELETE FROM ", quote_table(prefix, table), " WHERE " | filters]
     end
 
@@ -220,10 +226,118 @@ if Code.ensure_loaded?(Firebirdex) do
 
     ## Query generation
 
-    binary_ops =
-      [==: " = ", !=: " != ", <=: " <= ", >=: " >= ", <: " < ", >: " > ",
-       +: " + ", -: " - ", *: " * ", /: " / ",
-       and: " AND ", or: " OR ", like: " LIKE "]
+    defp on_conflict({:raise, _, []}, _header), do: []
+
+    defp on_conflict({:nothing, _, targets}, _header) do
+      [" ON CONFLICT ", conflict_target(targets) | "DO NOTHING"]
+    end
+
+    defp on_conflict({:replace_all, _, {:constraint, _}}, _header) do
+      raise ArgumentError, "Upsert in SQLite3 does not support ON CONSTRAINT"
+    end
+
+    defp on_conflict({:replace_all, _, []}, _header) do
+      raise ArgumentError, "Upsert in SQLite3 requires :conflict_target"
+    end
+
+    defp on_conflict({:replace_all, _, targets}, header) do
+      [" ON CONFLICT ", conflict_target(targets), "DO " | replace(header)]
+    end
+
+    defp on_conflict({fields, _, targets}, _header) when is_list(fields) do
+      [" ON CONFLICT ", conflict_target(targets), "DO " | replace(fields)]
+    end
+
+    defp on_conflict({query, _, targets}, _header) do
+      [
+        " ON CONFLICT ",
+        conflict_target(targets),
+        "DO " | update_all(query, "UPDATE SET ")
+      ]
+    end
+
+    defp conflict_target([]), do: ""
+
+    defp conflict_target(targets) do
+      [?(, intersperse_map(targets, ?,, &quote_name/1), ?), ?\s]
+    end
+
+    defp replace(fields) do
+      [
+        "UPDATE SET "
+        | intersperse_map(fields, ?,, fn field ->
+            quoted = quote_name(field)
+            [quoted, " = ", "EXCLUDED." | quoted]
+          end)
+      ]
+    end
+
+    def insert_all(rows, on_conflict), do: insert_all(rows, on_conflict, 1)
+
+    def insert_all(%Ecto.Query{wheres: []} = _query, on_conflict, _counter)
+        when not is_nil(on_conflict) do
+      raise ArgumentError,
+            "SQLite3 requires a where clause to avoid ambiguity. Even simply specify where: true will work"
+    end
+
+    def insert_all(%Ecto.Query{} = query, _on_conflict, _counter) do
+      [all(query)]
+    end
+
+    def insert_all(rows, _on_conflict, counter) do
+      [
+        "VALUES ",
+        intersperse_reduce(
+          rows,
+          ?,,
+          counter,
+          fn row, counter ->
+            {row, counter} = insert_each(row, counter)
+            {[?(, row, ?)], counter}
+          end
+        )
+        |> elem(0)
+      ]
+    end
+
+    def insert_each(values, counter) do
+      intersperse_reduce(values, ?,, counter, fn
+        nil, _counter ->
+          raise ArgumentError,
+                "Cell-wise default values are not supported on INSERT statements by Firebird"
+
+        _, counter ->
+          # TODO: Should we have cell wise value support?
+          #       Essentially ``?1 ?2 ?3`` instead of ``? ? ?``
+          # {['?' | Integer.to_string(counter)], counter + 1}
+          {['?'], counter + 1}
+      end)
+    end
+
+    defp insert_as({%{sources: sources}, _, _}) do
+      {_expr, name, _schema} = create_name(sources, 0, [])
+      [" AS " | name]
+    end
+
+    defp insert_as({_, _, _}) do
+      []
+    end
+
+    binary_ops = [
+      ==: " = ",
+      !=: " != ",
+      <=: " <= ",
+      >=: " >= ",
+      <: " < ",
+      >: " > ",
+      +: " + ",
+      -: " - ",
+      *: " * ",
+      /: " / ",
+      and: " AND ",
+      or: " OR ",
+      like: " LIKE "
+    ]
 
     @binary_ops Keyword.keys(binary_ops)
 
@@ -233,31 +347,39 @@ if Code.ensure_loaded?(Firebirdex) do
 
     defp handle_call(fun, _arity), do: {:fun, Atom.to_string(fun)}
 
-    defp select(%{select: %{fields: fields}, distinct: distinct} = query, sources) do
-      ["SELECT ", distinct(distinct, sources, query) | select(fields, sources, query)]
-    end
-
     defp distinct(nil, _sources, _query), do: []
-    defp distinct(%QueryExpr{expr: true}, _sources, _query),  do: "DISTINCT "
+    defp distinct(%QueryExpr{expr: true}, _sources, _query), do: "DISTINCT "
     defp distinct(%QueryExpr{expr: false}, _sources, _query), do: []
+
     defp distinct(%QueryExpr{expr: exprs}, _sources, query) when is_list(exprs) do
       error!(query, "DISTINCT with multiple columns is not supported by Firebird")
     end
 
-    defp select([], _sources, _query),
+    defp select(%{select: %{fields: fields}, distinct: distinct} = query, sources) do
+      ["SELECT ", distinct(distinct, sources, query) | select_fields(fields, sources, query)]
+    end
+
+    defp select_fields([], _sources, _query),
       do: "TRUE"
-    defp select(fields, sources, query) do
+
+    defp select_fields(fields, sources, query) do
       intersperse_map(fields, ", ", fn
         {:&, _, [idx]} ->
           case elem(sources, idx) do
             {source, _, nil} ->
-              error!(query, "Firebird does not support selecting all fields from #{source} without a schema. " <>
-                            "Please specify a schema or specify exactly which fields you want to select")
+              error!(
+                query,
+                "Firebird does not support selecting all fields from #{source} without a schema. " <>
+                  "Please specify a schema or specify exactly which fields you want to select"
+              )
+
             {_, source, _} ->
               source
           end
+
         {key, value} ->
           [expr(value, sources, query), " AS ", quote_name(key)]
+
         value ->
           expr(value, sources, query)
       end)
@@ -268,7 +390,10 @@ if Code.ensure_loaded?(Firebirdex) do
       [" FROM ", from, " AS ", name | Enum.map(hints, &[?\s | &1])]
     end
 
-    defp cte(%{with_ctes: %WithExpr{recursive: recursive, queries: [_ | _] = queries}} = query, sources) do
+    defp cte(
+           %{with_ctes: %WithExpr{recursive: recursive, queries: [_ | _] = queries}} = query,
+           sources
+         ) do
       recursive_opt = if recursive, do: "RECURSIVE ", else: ""
       ctes = intersperse_map(queries, ", ", &cte_expr(&1, sources, query))
       ["WITH ", recursive_opt, ctes, " "]
@@ -284,10 +409,14 @@ if Code.ensure_loaded?(Firebirdex) do
     defp cte_query(%QueryExpr{expr: expr}, sources, query), do: expr(expr, sources, query)
 
     defp update_fields(type, %{updates: updates} = query, sources) do
-     fields = for(%{expr: expr} <- updates,
-                   {op, kw} <- expr,
-                   {key, value} <- kw,
-                   do: update_op(op, update_key(type, key, query, sources), value, sources, query))
+      fields =
+        for(
+          %{expr: expr} <- updates,
+          {op, kw} <- expr,
+          {key, value} <- kw,
+          do: update_op(op, update_key(type, key, query, sources), value, sources, query)
+        )
+
       Enum.intersperse(fields, ", ")
     end
 
@@ -296,6 +425,7 @@ if Code.ensure_loaded?(Firebirdex) do
 
       [name, ?. | quote_name(key)]
     end
+
     defp update_key(:on_conflict, key, _query, _sources) do
       quote_name(key)
     end
@@ -309,16 +439,18 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp update_op(command, _quoted_key, _value, _sources, query) do
-      error!(query, "Unknown update operation #{inspect command} for Firebird")
+      error!(query, "Unknown update operation #{inspect(command)} for Firebird")
     end
 
     defp using_join(%{joins: []}, _kind, _sources), do: {[], []}
+
     defp using_join(%{joins: joins} = query, kind, sources) do
       froms =
         intersperse_map(joins, ", ", fn
           %JoinExpr{qual: :inner, ix: ix, source: source} ->
             {join, name} = get_source(query, sources, ix, source)
             [join, " AS " | name]
+
           %JoinExpr{qual: qual} ->
             error!(query, "Firebird adapter supports only inner joins on #{kind}, got: `#{qual}`")
         end)
@@ -332,11 +464,19 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp join(%{joins: []}, _sources), do: []
+
     defp join(%{joins: joins} = query, sources) do
       Enum.map(joins, fn
         %JoinExpr{on: %QueryExpr{expr: expr}, qual: qual, ix: ix, source: source, hints: hints} ->
           {join, name} = get_source(query, sources, ix, source)
-          [join_qual(qual, query), join, " AS ", name, Enum.map(hints, &[?\s | &1]) | join_on(qual, expr, sources, query)]
+
+          [
+            join_qual(qual, query),
+            join,
+            " AS ",
+            name,
+            Enum.map(hints, &[?\s | &1]) | join_on(qual, expr, sources, query)
+          ]
       end)
     end
 
@@ -344,11 +484,11 @@ if Code.ensure_loaded?(Firebirdex) do
     defp join_on(_qual, expr, sources, query), do: [" ON " | expr(expr, sources, query)]
 
     defp join_qual(:inner, _), do: " INNER JOIN "
-    defp join_qual(:left, _),  do: " LEFT OUTER JOIN "
+    defp join_qual(:left, _), do: " LEFT OUTER JOIN "
     defp join_qual(:right, _), do: " RIGHT OUTER JOIN "
-    defp join_qual(:full, _),  do: " FULL OUTER JOIN "
+    defp join_qual(:full, _), do: " FULL OUTER JOIN "
     defp join_qual(:cross, _), do: " CROSS JOIN "
-    defp join_qual(mode, q),   do: error!(q, "join `#{inspect mode}` not supported by Firebird")
+    defp join_qual(mode, q), do: error!(q, "join `#{inspect(mode)}` not supported by Firebird")
 
     defp where(%{wheres: wheres} = query, sources) do
       boolean(" WHERE ", wheres, sources, query)
@@ -359,19 +499,25 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp group_by(%{group_bys: []}, _sources), do: []
+
     defp group_by(%{group_bys: group_bys} = query, sources) do
-      [" GROUP BY " |
-       intersperse_map(group_bys, ", ", fn %QueryExpr{expr: expr} ->
-         intersperse_map(expr, ", ", &expr(&1, sources, query))
-       end)]
+      [
+        " GROUP BY "
+        | intersperse_map(group_bys, ", ", fn %QueryExpr{expr: expr} ->
+            intersperse_map(expr, ", ", &expr(&1, sources, query))
+          end)
+      ]
     end
 
     defp window(%{windows: []}, _sources), do: []
+
     defp window(%{windows: windows} = query, sources) do
-      [" WINDOW " |
-       intersperse_map(windows, ", ", fn {name, %{expr: kw}} ->
-         [quote_name(name), " AS " | window_exprs(kw, sources, query)]
-       end)]
+      [
+        " WINDOW "
+        | intersperse_map(windows, ", ", fn {name, %{expr: kw}} ->
+            [quote_name(name), " AS " | window_exprs(kw, sources, query)]
+          end)
+      ]
     end
 
     defp window_exprs(kw, sources, query) do
@@ -391,29 +537,34 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp order_by(%{order_bys: []}, _sources), do: []
+
     defp order_by(%{order_bys: order_bys} = query, sources) do
-      [" ORDER BY " |
-       intersperse_map(order_bys, ", ", fn %QueryExpr{expr: expr} ->
-         intersperse_map(expr, ", ", &order_by_expr(&1, sources, query))
-       end)]
+      [
+        " ORDER BY "
+        | intersperse_map(order_bys, ", ", fn %QueryExpr{expr: expr} ->
+            intersperse_map(expr, ", ", &order_by_expr(&1, sources, query))
+          end)
+      ]
     end
 
     defp order_by_expr({dir, expr}, sources, query) do
       str = expr(expr, sources, query)
 
       case dir do
-        :asc  -> str
+        :asc -> str
         :desc -> [str | " DESC"]
         _ -> error!(query, "#{dir} is not supported in ORDER BY in Firebird")
       end
     end
 
     defp limit(%{limit: nil}, _sources), do: []
+
     defp limit(%{limit: %QueryExpr{expr: expr}} = query, sources) do
       [" FETCH FIRST ", expr(expr, sources, query), " ROWS ONLY "]
     end
 
     defp offset(%{offset: nil}, _sources), do: []
+
     defp offset(%{offset: %QueryExpr{expr: expr}} = query, sources) do
       [" OFFSET ", expr(expr, sources, query), " ROWS "]
     end
@@ -434,14 +585,19 @@ if Code.ensure_loaded?(Firebirdex) do
     defp lock(%{lock: expr} = query, sources), do: [?\s | expr(expr, sources, query)]
 
     defp boolean(_name, [], _sources, _query), do: []
+
     defp boolean(name, [%{expr: expr, op: op} | query_exprs], sources, query) do
-      [name,
-       Enum.reduce(query_exprs, {op, paren_expr(expr, sources, query)}, fn
-         %BooleanExpr{expr: expr, op: op}, {op, acc} ->
-           {op, [acc, operator_to_boolean(op) | paren_expr(expr, sources, query)]}
-         %BooleanExpr{expr: expr, op: op}, {_, acc} ->
-           {op, [?(, acc, ?), operator_to_boolean(op) | paren_expr(expr, sources, query)]}
-       end) |> elem(1)]
+      [
+        name,
+        Enum.reduce(query_exprs, {op, paren_expr(expr, sources, query)}, fn
+          %BooleanExpr{expr: expr, op: op}, {op, acc} ->
+            {op, [acc, operator_to_boolean(op) | paren_expr(expr, sources, query)]}
+
+          %BooleanExpr{expr: expr, op: op}, {_, acc} ->
+            {op, [?(, acc, ?), operator_to_boolean(op) | paren_expr(expr, sources, query)]}
+        end)
+        |> elem(1)
+      ]
     end
 
     defp operator_to_boolean(:and), do: " AND "
@@ -470,7 +626,7 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp expr({{:., _, [{:&, _, [idx]}, field]}, _, []}, sources, _query)
-        when is_atom(field) do
+         when is_atom(field) do
       {_, name, _} = elem(sources, idx)
       [name, ?. | quote_name(field)]
     end
@@ -529,20 +685,28 @@ if Code.ensure_loaded?(Firebirdex) do
 
     defp expr({:fragment, _, parts}, sources, query) do
       Enum.map(parts, fn
-        {:raw, part}  -> part
+        {:raw, part} -> part
         {:expr, expr} -> expr(expr, sources, query)
       end)
       |> parens_for_select
     end
 
     defp expr({:datetime_add, _, [datetime, count, interval]}, sources, query) do
-      ["date_add(", expr(datetime, sources, query), ", ",
-       interval(count, interval, sources, query) | ")"]
+      [
+        "date_add(",
+        expr(datetime, sources, query),
+        ", ",
+        interval(count, interval, sources, query) | ")"
+      ]
     end
 
     defp expr({:date_add, _, [date, count, interval]}, sources, query) do
-      ["CAST(date_add(", expr(date, sources, query), ", ",
-       interval(count, interval, sources, query) | ") AS date)"]
+      [
+        "CAST(date_add(",
+        expr(date, sources, query),
+        ", ",
+        interval(count, interval, sources, query) | ") AS date)"
+      ]
     end
 
     defp expr({:ilike, _, [_, _]}, _sources, query) do
@@ -589,6 +753,7 @@ if Code.ensure_loaded?(Firebirdex) do
         {:binary_op, op} ->
           [left, right] = args
           [op_to_binary(left, sources, query), op | op_to_binary(right, sources, query)]
+
         {:fun, fun} ->
           [fun, ?(, modifier, intersperse_map(args, ", ", &expr(&1, sources, query)), ?)]
       end
@@ -603,7 +768,7 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp expr(%Ecto.Query.Tagged{value: binary, type: :binary}, _sources, _query)
-        when is_binary(binary) do
+         when is_binary(binary) do
       hex = Base.encode16(binary, case: :lower)
       [?x, ?', hex, ?']
     end
@@ -617,8 +782,8 @@ if Code.ensure_loaded?(Firebirdex) do
       ["CAST(", expr(other, sources, query), " AS ", ecto_cast_to_db(type, query), ?)]
     end
 
-    defp expr(nil, _sources, _query),   do: "NULL"
-    defp expr(true, _sources, _query),  do: "TRUE"
+    defp expr(nil, _sources, _query), do: "NULL"
+    defp expr(true, _sources, _query), do: "TRUE"
     defp expr(false, _sources, _query), do: "FALSE"
 
     defp expr(literal, _sources, _query) when is_binary(literal) do
@@ -684,6 +849,7 @@ if Code.ensure_loaded?(Firebirdex) do
     defp create_alias(<<first, _rest::binary>>) when first in ?a..?z when first in ?A..?Z do
       first
     end
+
     defp create_alias(_) do
       ?t
     end
@@ -693,28 +859,45 @@ if Code.ensure_loaded?(Firebirdex) do
     alias Ecto.Migration.{Table, Index, Reference, Constraint}
 
     @impl true
-    def execute_ddl({command, %Table{} = table, columns}) when command in [:create, :create_if_not_exists] do
+    def execute_ddl({command, %Table{} = table, columns})
+        when command in [:create, :create_if_not_exists] do
       table_structure =
         case column_definitions(table, columns) ++ pk_definitions(columns, ", ") do
           [] -> []
           list -> [?\s, ?(, list, ?)]
         end
 
-      [["CREATE TABLE ",
-        if_do(command == :create_if_not_exists, "IF NOT EXISTS "),
-        quote_table(table.prefix, table.name),
-        table_structure,
-        options_expr(table.options)]]
+      [
+        [
+          "CREATE TABLE ",
+          if_do(command == :create_if_not_exists, "IF NOT EXISTS "),
+          quote_table(table.prefix, table.name),
+          table_structure,
+          options_expr(table.options)
+        ]
+      ]
     end
 
     def execute_ddl({command, %Table{} = table}) when command in [:drop, :drop_if_exists] do
-      [["DROP TABLE ", if_do(command == :drop_if_exists, "IF EXISTS "),
-        quote_table(table.prefix, table.name)]]
+      [
+        [
+          "DROP TABLE ",
+          if_do(command == :drop_if_exists, "IF EXISTS "),
+          quote_table(table.prefix, table.name)
+        ]
+      ]
     end
 
     def execute_ddl({:alter, %Table{} = table, changes}) do
-      [["ALTER TABLE ", quote_table(table.prefix, table.name), ?\s,
-        column_changes(table, changes), pk_definitions(changes, ", ADD ")]]
+      [
+        [
+          "ALTER TABLE ",
+          quote_table(table.prefix, table.name),
+          ?\s,
+          column_changes(table, changes),
+          pk_definitions(changes, ", ADD ")
+        ]
+      ]
     end
 
     def execute_ddl({:create, %Index{} = index}) do
@@ -722,13 +905,22 @@ if Code.ensure_loaded?(Firebirdex) do
         error!(nil, "Firebird adapter does not support where in indexes")
       end
 
-      [["CREATE", if_do(index.unique, " UNIQUE"), " INDEX ",
-        quote_name(index.name),
-        " ON ",
-        quote_table(index.prefix, index.table), ?\s,
-        ?(, intersperse_map(index.columns, ", ", &index_expr/1), ?),
-        if_do(index.using, [" USING ", to_string(index.using)]),
-        if_do(index.concurrently, " LOCK=NONE")]]
+      [
+        [
+          "CREATE",
+          if_do(index.unique, " UNIQUE"),
+          " INDEX ",
+          quote_name(index.name),
+          " ON ",
+          quote_table(index.prefix, index.table),
+          ?\s,
+          ?(,
+          intersperse_map(index.columns, ", ", &index_expr/1),
+          ?),
+          if_do(index.using, [" USING ", to_string(index.using)]),
+          if_do(index.concurrently, " LOCK=NONE")
+        ]
+      ]
     end
 
     def execute_ddl({:create_if_not_exists, %Index{}}),
@@ -736,14 +928,20 @@ if Code.ensure_loaded?(Firebirdex) do
 
     def execute_ddl({:create, %Constraint{check: check}}) when is_binary(check),
       do: error!(nil, "Firebird adapter does not support check constraints")
+
     def execute_ddl({:create, %Constraint{exclude: exclude}}) when is_binary(exclude),
       do: error!(nil, "Firebird adapter does not support exclusion constraints")
 
     def execute_ddl({:drop, %Index{} = index}) do
-      [["DROP INDEX ",
-        quote_name(index.name),
-        " ON ", quote_table(index.prefix, index.table),
-        if_do(index.concurrently, " LOCK=NONE")]]
+      [
+        [
+          "DROP INDEX ",
+          quote_name(index.name),
+          " ON ",
+          quote_table(index.prefix, index.table),
+          if_do(index.concurrently, " LOCK=NONE")
+        ]
+      ]
     end
 
     def execute_ddl({:drop, %Constraint{}}),
@@ -756,13 +954,27 @@ if Code.ensure_loaded?(Firebirdex) do
       do: error!(nil, "Firebird adapter does not support drop if exists for index")
 
     def execute_ddl({:rename, %Table{} = current_table, %Table{} = new_table}) do
-      [["RENAME TABLE ", quote_table(current_table.prefix, current_table.name),
-        " TO ", quote_table(new_table.prefix, new_table.name)]]
+      [
+        [
+          "RENAME TABLE ",
+          quote_table(current_table.prefix, current_table.name),
+          " TO ",
+          quote_table(new_table.prefix, new_table.name)
+        ]
+      ]
     end
 
     def execute_ddl({:rename, %Table{} = table, current_column, new_column}) do
-      [["ALTER TABLE ", quote_table(table.prefix, table.name), " RENAME COLUMN ",
-        quote_name(current_column), " TO ", quote_name(new_column)]]
+      [
+        [
+          "ALTER TABLE ",
+          quote_table(table.prefix, table.name),
+          " RENAME COLUMN ",
+          quote_name(current_column),
+          " TO ",
+          quote_name(new_column)
+        ]
+      ]
     end
 
     def execute_ddl(string) when is_binary(string), do: [string]
@@ -775,7 +987,8 @@ if Code.ensure_loaded?(Firebirdex) do
 
     @impl true
     def table_exists_query(table) do
-      {"SELECT true FROM information_schema.tables WHERE table_name = ? AND table_schema = DATABASE() LIMIT 1", [table]}
+      {"SELECT true FROM information_schema.tables WHERE table_name = ? AND table_schema = DATABASE() LIMIT 1",
+       [table]}
     end
 
     defp pk_definitions(columns, prefix) do
@@ -786,7 +999,7 @@ if Code.ensure_loaded?(Firebirdex) do
 
       case pks do
         [] -> []
-        _  -> [[prefix, "PRIMARY KEY (", quote_names(pks), ?)]]
+        _ -> [[prefix, "PRIMARY KEY (", quote_names(pks), ?)]]
       end
     end
 
@@ -795,8 +1008,13 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp column_definition(table, {:add, name, %Reference{} = ref, opts}) do
-      [quote_name(name), ?\s, reference_column_type(ref.type, opts),
-       column_options(opts), reference_expr(ref, table, name)]
+      [
+        quote_name(name),
+        ?\s,
+        reference_column_type(ref.type, opts),
+        column_options(opts),
+        reference_expr(ref, table, name)
+      ]
     end
 
     defp column_definition(_table, {:add, name, type, opts}) do
@@ -812,8 +1030,14 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp column_change(table, {:add, name, %Reference{} = ref, opts}) do
-      ["ADD ", quote_name(name), ?\s, reference_column_type(ref.type, opts),
-       column_options(opts), constraint_expr(ref, table, name)]
+      [
+        "ADD ",
+        quote_name(name),
+        ?\s,
+        reference_column_type(ref.type, opts),
+        column_options(opts),
+        constraint_expr(ref, table, name)
+      ]
     end
 
     defp column_change(_table, {:add, name, type, opts}) do
@@ -821,8 +1045,14 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp column_change(table, {:add_if_not_exists, name, %Reference{} = ref, opts}) do
-      ["ADD IF NOT EXISTS ", quote_name(name), ?\s, reference_column_type(ref.type, opts),
-       column_options(opts), constraint_if_not_exists_expr(ref, table, name)]
+      [
+        "ADD IF NOT EXISTS ",
+        quote_name(name),
+        ?\s,
+        reference_column_type(ref.type, opts),
+        column_options(opts),
+        constraint_if_not_exists_expr(ref, table, name)
+      ]
     end
 
     defp column_change(_table, {:add_if_not_exists, name, type, opts}) do
@@ -830,28 +1060,46 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp column_change(table, {:modify, name, %Reference{} = ref, opts}) do
-      [drop_constraint_expr(opts[:from], table, name), "MODIFY ", quote_name(name), ?\s, reference_column_type(ref.type, opts),
-       column_options(opts), constraint_expr(ref, table, name)]
+      [
+        drop_constraint_expr(opts[:from], table, name),
+        "MODIFY ",
+        quote_name(name),
+        ?\s,
+        reference_column_type(ref.type, opts),
+        column_options(opts),
+        constraint_expr(ref, table, name)
+      ]
     end
 
     defp column_change(table, {:modify, name, type, opts}) do
-      [drop_constraint_expr(opts[:from], table, name), "MODIFY ", quote_name(name), ?\s, column_type(type, opts), column_options(opts)]
+      [
+        drop_constraint_expr(opts[:from], table, name),
+        "MODIFY ",
+        quote_name(name),
+        ?\s,
+        column_type(type, opts),
+        column_options(opts)
+      ]
     end
 
     defp column_change(_table, {:remove, name}), do: ["DROP ", quote_name(name)]
+
     defp column_change(table, {:remove, name, %Reference{} = ref, _opts}) do
       [drop_constraint_expr(ref, table, name), "DROP ", quote_name(name)]
     end
+
     defp column_change(_table, {:remove, name, _type, _opts}), do: ["DROP ", quote_name(name)]
 
     defp column_change(table, {:remove_if_exists, name, %Reference{} = ref}) do
       [drop_constraint_if_exists_expr(ref, table, name), "DROP IF EXISTS ", quote_name(name)]
     end
-    defp column_change(_table, {:remove_if_exists, name, _type}), do: ["DROP IF EXISTS ", quote_name(name)]
+
+    defp column_change(_table, {:remove_if_exists, name, _type}),
+      do: ["DROP IF EXISTS ", quote_name(name)]
 
     defp column_options(opts) do
       default = Keyword.fetch(opts, :default)
-      null    = Keyword.get(opts, :null)
+      null = Keyword.get(opts, :null)
       after_column = Keyword.get(opts, :after)
 
       [default_expr(default), null_expr(null), after_expr(after_column)]
@@ -867,35 +1115,44 @@ if Code.ensure_loaded?(Firebirdex) do
 
     defp default_expr({:ok, nil}),
       do: " DEFAULT NULL"
+
     defp default_expr({:ok, literal}) when is_binary(literal),
       do: [" DEFAULT '", escape_string(literal), ?']
+
     defp default_expr({:ok, literal}) when is_number(literal) or is_boolean(literal),
       do: [" DEFAULT ", to_string(literal)]
+
     defp default_expr({:ok, {:fragment, expr}}),
       do: [" DEFAULT ", expr]
+
     defp default_expr({:ok, value}) when is_map(value) do
       library = Application.get_env(:ecto_firebird, :json_library, Jason)
       expr = IO.iodata_to_binary(library.encode_to_iodata!(value))
       [" DEFAULT ", ?(, ?', escape_string(expr), ?', ?)]
     end
+
     defp default_expr(:error),
       do: []
 
     defp index_expr(literal) when is_binary(literal),
       do: literal
+
     defp index_expr(literal), do: quote_name(literal)
 
     defp options_expr(nil),
       do: []
+
     defp options_expr(keyword) when is_list(keyword),
       do: error!(nil, "Firebird adapter does not support keyword lists in :options")
+
     defp options_expr(options),
       do: [?\s, to_string(options)]
 
     defp column_type(type, _opts) when type in ~w(time utc_datetime naive_datetime)a,
       do: ecto_to_db(type)
 
-    defp column_type(type, opts) when type in ~w(time_usec utc_datetime_usec naive_datetime_usec)a do
+    defp column_type(type, opts)
+         when type in ~w(time_usec utc_datetime_usec naive_datetime_usec)a do
       precision = Keyword.get(opts, :precision, 6)
       type_name = ecto_to_db(type)
 
@@ -903,9 +1160,9 @@ if Code.ensure_loaded?(Firebirdex) do
     end
 
     defp column_type(type, opts) do
-      size      = Keyword.get(opts, :size)
+      size = Keyword.get(opts, :size)
       precision = Keyword.get(opts, :precision)
-      scale     = Keyword.get(opts, :scale)
+      scale = Keyword.get(opts, :scale)
 
       cond do
         size -> [ecto_size_to_db(type), ?(, to_string(size), ?)]
@@ -922,11 +1179,22 @@ if Code.ensure_loaded?(Firebirdex) do
         error!(nil, ":match is not supported in references for tds")
       end
 
-      ["CONSTRAINT ", reference_name(ref, table, name),
-       " ", type, " (", quote_names(current_columns), ?),
-       " REFERENCES ", quote_table(ref.prefix || table.prefix, ref.table),
-       ?(, quote_names(reference_columns), ?),
-       reference_on_delete(ref.on_delete), reference_on_update(ref.on_update)]
+      [
+        "CONSTRAINT ",
+        reference_name(ref, table, name),
+        " ",
+        type,
+        " (",
+        quote_names(current_columns),
+        ?),
+        " REFERENCES ",
+        quote_table(ref.prefix || table.prefix, ref.table),
+        ?(,
+        quote_names(reference_columns),
+        ?),
+        reference_on_delete(ref.on_delete),
+        reference_on_update(ref.on_update)
+      ]
     end
 
     defp reference_expr(%Reference{} = ref, table, name),
@@ -940,16 +1208,19 @@ if Code.ensure_loaded?(Firebirdex) do
 
     defp drop_constraint_expr(%Reference{} = ref, table, name),
       do: ["DROP FOREIGN KEY ", reference_name(ref, table, name), ", "]
+
     defp drop_constraint_expr(_, _, _),
       do: []
 
     defp drop_constraint_if_exists_expr(%Reference{} = ref, table, name),
       do: ["DROP FOREIGN KEY IF EXISTS ", reference_name(ref, table, name), ", "]
+
     defp drop_constraint_if_exists_expr(_, _, _),
       do: []
 
     defp reference_name(%Reference{name: nil}, table, column),
       do: quote_name("#{table.name}_#{column}_fkey")
+
     defp reference_name(%Reference{name: name}, _table, _column),
       do: quote_name(name)
 
@@ -967,6 +1238,14 @@ if Code.ensure_loaded?(Firebirdex) do
     defp reference_on_update(:restrict), do: " ON UPDATE RESTRICT"
     defp reference_on_update(_), do: []
 
+    defp returning([]), do: []
+
+    defp returning(returning) do
+      [
+        " RETURNING " | quote_names(returning)
+      ]
+    end
+
     ## Helpers
 
     defp get_source(query, sources, ix, source) do
@@ -979,7 +1258,7 @@ if Code.ensure_loaded?(Firebirdex) do
 
     defp quote_name(name) do
       if String.contains?(name, "\"") do
-        error!(nil, "bad field name #{inspect name}")
+        error!(nil, "bad field name #{inspect(name)}")
       end
 
       [?", name, ?"]
@@ -987,25 +1266,45 @@ if Code.ensure_loaded?(Firebirdex) do
 
     defp quote_names(names), do: intersperse_map(names, ?,, &quote_name/1)
 
-    defp quote_table(nil, name),    do: quote_table(name)
+    defp quote_table(nil, name), do: quote_table(name)
     defp quote_table(prefix, name), do: [quote_table(prefix), ?., quote_table(name)]
 
     defp quote_table(name) when is_atom(name),
       do: quote_table(Atom.to_string(name))
+
     defp quote_table(name) do
       if String.contains?(name, "\"") do
-        error!(nil, "bad table name #{inspect name}")
+        error!(nil, "bad table name #{inspect(name)}")
       end
+
       [?", name, ?"]
     end
 
     defp intersperse_map(list, separator, mapper, acc \\ [])
+
     defp intersperse_map([], _separator, _mapper, acc),
       do: acc
+
     defp intersperse_map([elem], _separator, mapper, acc),
       do: [acc | mapper.(elem)]
+
     defp intersperse_map([elem | rest], separator, mapper, acc),
       do: intersperse_map(rest, separator, mapper, [acc, mapper.(elem), separator])
+
+    defp intersperse_reduce(list, separator, user_acc, reducer, acc \\ [])
+
+    defp intersperse_reduce([], _separator, user_acc, _reducer, acc),
+      do: {acc, user_acc}
+
+    defp intersperse_reduce([item], _separator, user_acc, reducer, acc) do
+      {item, user_acc} = reducer.(item, user_acc)
+      {[acc | item], user_acc}
+    end
+
+    defp intersperse_reduce([item | rest], separator, user_acc, reducer, acc) do
+      {item, user_acc} = reducer.(item, user_acc)
+      intersperse_reduce(rest, separator, user_acc, reducer, [acc, item, separator])
+    end
 
     defp if_do(condition, value) do
       if condition, do: value, else: []
@@ -1034,24 +1333,29 @@ if Code.ensure_loaded?(Firebirdex) do
     defp ecto_size_to_db(type), do: ecto_to_db(type)
 
     defp ecto_to_db(type, query \\ nil)
-    defp ecto_to_db({:array, _}, query),           do: error!(query, "Array type is not supported by Firebird")
-    defp ecto_to_db(:id, _query),                  do: "integer"
-    defp ecto_to_db(:serial, _query),              do: "bigint unsigned not null auto_increment"
-    defp ecto_to_db(:bigserial, _query),           do: "bigint unsigned not null auto_increment"
-    defp ecto_to_db(:binary_id, _query),           do: "binary(16)"
-    defp ecto_to_db(:string, _query),              do: "varchar"
-    defp ecto_to_db(:float, _query),               do: "double"
-    defp ecto_to_db(:binary, _query),              do: "blob"
-    defp ecto_to_db(:uuid, _query),                do: "binary(16)" # Firebird does not support uuid
-    defp ecto_to_db(:map, _query),                 do: "json"
-    defp ecto_to_db({:map, _}, _query),            do: "json"
-    defp ecto_to_db(:time_usec, _query),           do: "time"
-    defp ecto_to_db(:utc_datetime, _query),        do: "datetime"
-    defp ecto_to_db(:utc_datetime_usec, _query),   do: "datetime"
-    defp ecto_to_db(:naive_datetime, _query),      do: "datetime"
+
+    defp ecto_to_db({:array, _}, query),
+      do: error!(query, "Array type is not supported by Firebird")
+
+    defp ecto_to_db(:id, _query), do: "integer"
+    defp ecto_to_db(:serial, _query), do: "bigint unsigned not null auto_increment"
+    defp ecto_to_db(:bigserial, _query), do: "bigint unsigned not null auto_increment"
+    defp ecto_to_db(:binary_id, _query), do: "binary(16)"
+    defp ecto_to_db(:string, _query), do: "varchar"
+    defp ecto_to_db(:float, _query), do: "double"
+    defp ecto_to_db(:binary, _query), do: "blob"
+    # Firebird does not support uuid
+    defp ecto_to_db(:uuid, _query), do: "binary(16)"
+    defp ecto_to_db(:map, _query), do: "json"
+    defp ecto_to_db({:map, _}, _query), do: "json"
+    defp ecto_to_db(:time_usec, _query), do: "time"
+    defp ecto_to_db(:utc_datetime, _query), do: "datetime"
+    defp ecto_to_db(:utc_datetime_usec, _query), do: "datetime"
+    defp ecto_to_db(:naive_datetime, _query), do: "datetime"
     defp ecto_to_db(:naive_datetime_usec, _query), do: "datetime"
-    defp ecto_to_db(atom, _query) when is_atom(atom),  do: Atom.to_string(atom)
-    defp ecto_to_db(str, _query)  when is_binary(str), do: str
+    defp ecto_to_db(atom, _query) when is_atom(atom), do: Atom.to_string(atom)
+    defp ecto_to_db(str, _query) when is_binary(str), do: str
+
     defp ecto_to_db(type, _query) do
       raise ArgumentError,
             "unsupported type `#{inspect(type)}`. The type can either be an atom, a string " <>
@@ -1061,6 +1365,7 @@ if Code.ensure_loaded?(Firebirdex) do
     defp error!(nil, message) do
       raise ArgumentError, message
     end
+
     defp error!(query, message) do
       raise Ecto.QueryError, query: query, message: message
     end
