@@ -38,7 +38,6 @@ defmodule Ecto.Adapters.Firebird do
   use Ecto.Adapters.SQL, driver: :firebirdex
 
   @behaviour Ecto.Adapter.Storage
-  @behaviour Ecto.Adapter.Structure
 
   ## Custom Firebird types
 
@@ -61,7 +60,7 @@ defmodule Ecto.Adapters.Firebird do
   defp float_decode(%Decimal{} = decimal), do: {:ok, Decimal.to_float(decimal)}
   defp float_decode(x), do: {:ok, x}
 
-  defp json_decode(x) when is_binary(x), do: {:ok, MyXQL.json_library().decode!(x)}
+  defp json_decode(x) when is_binary(x), do: {:ok, Firebird.json_library().decode!(x)}
   defp json_decode(x), do: {:ok, x}
 
   ## Storage API
@@ -157,51 +156,6 @@ defmodule Ecto.Adapters.Firebird do
     else
       fun.()
     end
-  end
-
-  @impl true
-  def insert(adapter_meta, schema_meta, params, on_conflict, returning, opts) do
-    %{source: source, prefix: prefix} = schema_meta
-    {_, query_params, _} = on_conflict
-
-    key = primary_key!(schema_meta, returning)
-    {fields, values} = :lists.unzip(params)
-    sql = @conn.insert(prefix, source, fields, [fields], on_conflict, [])
-    opts = [{:cache_statement, "ecto_insert_#{source}"} | opts]
-
-    case Ecto.Adapters.SQL.query(adapter_meta, sql, values ++ query_params, opts) do
-      {:ok, %{num_rows: 1, last_insert_id: last_insert_id}} ->
-        {:ok, last_insert_id(key, last_insert_id)}
-
-      {:ok, %{num_rows: 2, last_insert_id: last_insert_id}} ->
-        {:ok, last_insert_id(key, last_insert_id)}
-
-      {:error, err} ->
-        case @conn.to_constraints(err, source: source) do
-          []          -> raise err
-          constraints -> {:invalid, constraints}
-        end
-    end
-  end
-
-  defp primary_key!(%{autogenerate_id: {_, key, _type}}, [key]), do: key
-  defp primary_key!(_, []), do: nil
-  defp primary_key!(%{schema: schema}, returning) do
-    raise ArgumentError, "Firebird does not support :read_after_writes in schemas for non-primary keys. " <>
-                         "The following fields in #{inspect schema} are tagged as such: #{inspect returning}"
-  end
-
-  defp last_insert_id(nil, _last_insert_id), do: []
-  defp last_insert_id(_key, 0), do: []
-  defp last_insert_id(key, last_insert_id), do: [{key, last_insert_id}]
-
-  defp append_versions(_table, [], contents) do
-    {:ok, contents}
-  end
-  defp append_versions(table, versions, contents) do
-    {:ok,
-      contents <>
-      Enum.map_join(versions, &~s[INSERT INTO "#{table}" (version) VALUES (#{&1});\n])}
   end
 
   ## Helpers
