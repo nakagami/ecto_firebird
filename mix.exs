@@ -28,7 +28,7 @@ defmodule EctoFirebird.MixProject do
   defp package do
     [
       maintainers: ["Hajime Nakagami"],
-      licenses: ["Apache 2.0"],
+      licenses: ["MIT"],
       links: %{"Github" => "https://github.com/nakagami/ecto_firebird"}
     ]
   end
