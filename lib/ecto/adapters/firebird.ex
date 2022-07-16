@@ -38,6 +38,7 @@ defmodule Ecto.Adapters.Firebird do
   use Ecto.Adapters.SQL, driver: :firebirdex
 
   @behaviour Ecto.Adapter.Storage
+  alias Ecto.Adapters.Firebird.Codec
 
   ## Custom Firebird types
 
@@ -60,7 +61,7 @@ defmodule Ecto.Adapters.Firebird do
   defp float_decode(%Decimal{} = decimal), do: {:ok, Decimal.to_float(decimal)}
   defp float_decode(x), do: {:ok, x}
 
-  defp json_decode(x) when is_binary(x), do: {:ok, Firebird.json_library().decode!(x)}
+  defp json_decode(x) when is_binary(x), do: {:ok, Codec.json_decode(x)}
   defp json_decode(x), do: {:ok, x}
 
   ## Storage API
