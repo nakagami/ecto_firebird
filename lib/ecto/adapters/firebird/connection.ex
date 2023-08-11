@@ -688,7 +688,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
 
   @impl true
   def table_exists_query(table) do
-    {"SELECT name FROM sqlite_master WHERE type='table' AND name=? LIMIT 1", [table]}
+    {"SELECT name FROM sqlite_master WHERE type='table' AND name=? FIRST 1", [table]}
   end
 
   ##
@@ -1114,13 +1114,13 @@ defmodule Ecto.Adapters.Firebird.Connection do
   def limit(%{limit: nil}, _sources), do: []
 
   def limit(%{limit: %{expr: expression}} = query, sources) do
-    [" LIMIT " | expr(expression, sources, query)]
+    [" FIRST " | expr(expression, sources, query)]
   end
 
   def offset(%{offset: nil}, _sources), do: []
 
   def offset(%{offset: %QueryExpr{expr: expression}} = query, sources) do
-    [" OFFSET " | expr(expression, sources, query)]
+    [" SKIP " | expr(expression, sources, query)]
   end
 
   defp combinations(%{combinations: combinations}) do

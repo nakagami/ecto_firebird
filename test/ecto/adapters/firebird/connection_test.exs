@@ -253,7 +253,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     assert update_all(query) ==
              ~s{WITH "target_rows" AS } <>
-               ~s{(SELECT ss0."id" AS "id" FROM "schema" AS ss0 ORDER BY ss0."id" LIMIT 10) } <>
+               ~s{(SELECT ss0."id" AS "id" FROM "schema" AS ss0 ORDER BY ss0."id" FIRST 10) } <>
                ~s{UPDATE "schema" AS s0 } <>
                ~s{SET "x" = 123 } <>
                ~s{FROM "target_rows" AS t1 } <>
@@ -279,7 +279,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     assert delete_all(query) ==
              ~s{WITH "target_rows" AS } <>
-               ~s{(SELECT ss0."id" AS "id" FROM "schema" AS ss0 INNER JOIN "schema2" AS ss1 ON ss0."x" = ss1."z" ORDER BY ss0."id" LIMIT 10) } <>
+               ~s{(SELECT ss0."id" AS "id" FROM "schema" AS ss0 INNER JOIN "schema2" AS ss1 ON ss0."x" = ss1."z" ORDER BY ss0."id" FIRST 10) } <>
                ~s{DELETE FROM "schema" AS s0 } <>
                ~s{RETURNING "id", "x", "y", "z", "w", "meta"}
   end
@@ -479,17 +479,17 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{UNION SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20 } <>
-               ~s{UNION SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30 } <>
-               ~s{ORDER BY rand LIMIT 5 OFFSET 10}
+               ~s{UNION SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FIRST 40 SKIP 20 } <>
+               ~s{UNION SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FIRST 60 SKIP 30 } <>
+               ~s{ORDER BY rand FIRST 5 SKIP 10}
 
     query = base_query |> union_all(^union_query1) |> union_all(^union_query2) |> plan()
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{UNION ALL SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20 } <>
-               ~s{UNION ALL SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30 } <>
-               ~s{ORDER BY rand LIMIT 5 OFFSET 10}
+               ~s{UNION ALL SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FIRST 40 SKIP 20 } <>
+               ~s{UNION ALL SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FIRST 60 SKIP 30 } <>
+               ~s{ORDER BY rand FIRST 5 SKIP 10}
   end
 
   test "except and except all" do
@@ -506,9 +506,9 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{EXCEPT SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20 } <>
-               ~s{EXCEPT SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30 } <>
-               ~s{ORDER BY rand LIMIT 5 OFFSET 10}
+               ~s{EXCEPT SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FIRST 40 SKIP 20 } <>
+               ~s{EXCEPT SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FIRST 60 SKIP 30 } <>
+               ~s{ORDER BY rand FIRST 5 SKIP 10}
 
     query =
       base_query |> except_all(^except_query1) |> except_all(^except_query2) |> plan()
@@ -536,9 +536,9 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     assert all(query) ==
              ~s{SELECT s0."x" FROM "schema" AS s0 } <>
-               ~s{INTERSECT SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" LIMIT 40 OFFSET 20 } <>
-               ~s{INTERSECT SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" LIMIT 60 OFFSET 30 } <>
-               ~s{ORDER BY rand LIMIT 5 OFFSET 10}
+               ~s{INTERSECT SELECT s0."y" FROM "schema" AS s0 ORDER BY s0."y" FIRST 40 SKIP 20 } <>
+               ~s{INTERSECT SELECT s0."z" FROM "schema" AS s0 ORDER BY s0."z" FIRST 60 SKIP 30 } <>
+               ~s{ORDER BY rand FIRST 5 SKIP 10}
 
     query =
       base_query
@@ -553,13 +553,13 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
   test "limit and offset" do
     query = Schema |> limit([r], 3) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 LIMIT 3}
+    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 FIRST 3}
 
     query = Schema |> offset([r], 5) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 OFFSET 5}
+    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 SKIP 5}
 
     query = Schema |> offset([r], 5) |> limit([r], 3) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 LIMIT 3 OFFSET 5}
+    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 FIRST 3 SKIP 5}
   end
 
   test "lock" do
@@ -1013,7 +1013,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     GROUP BY ?, ? HAVING (?) AND (?) \
     UNION SELECT s0."id", ? FROM "schema1" AS s0 WHERE (?) \
     UNION ALL SELECT s0."id", ? FROM "schema2" AS s0 WHERE (?) \
-    ORDER BY ? LIMIT ? OFFSET ?\
+    ORDER BY ? FIRST ? SKIP ?\
     """
 
     assert all(query) == String.trim(result)
