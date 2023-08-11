@@ -688,7 +688,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
 
   @impl true
   def table_exists_query(table) do
-    {"SELECT name FROM sqlite_master WHERE type='table' AND name=? FIRST 1", [table]}
+    {"SELECT FIRST 1 name FROM sqlite_master WHERE type='table' AND name=?", [table]}
   end
 
   ##
