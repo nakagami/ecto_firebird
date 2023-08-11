@@ -10,8 +10,8 @@ alias Ecto.Integration.TestRepo
 
 Application.put_env(:ecto_firebird, TestRepo,
   adapter: Ecto.Adapters.Firebird,
-  hostname: "localhost",
-  username: "sysdba",
+  username: System.get_env("ISC_USER", "sysdba"),
+  password: System.get_env("ISC_PASSWORD", "masterkey"),
   password: "masterkey",
   database: "/tmp/ecto_firebird_test.fdb",
   pool: Ecto.Adapters.SQL.Sandbox,
