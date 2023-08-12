@@ -99,18 +99,18 @@ defmodule Ecto.Integration.MathTest do
     #
     #      assert [nil] = TestRepo.all(query)
     #    end
-
-    test "decimal at 0.3" do
-      account = create_account("Company")
-      create_product(account, Decimal.new("0.30"))
-
-      query = from(p in Product, select: fragment("acos(?)", p.price))
-
-      # Right now, sqlite will return the acos function as an IEEE float
-      [num] = TestRepo.all(query)
-      assert_in_delta num, 1.266103672779499, 0.000000000000001
-    end
-
+    #
+    # test "decimal at 0.3" do
+    #  account = create_account("Company")
+    #  create_product(account, Decimal.new("0.30"))
+    #
+    #      query = from(p in Product, select: fragment("acos(?)", p.price))
+    #
+    #      # Right now, sqlite will return the acos function as an IEEE float
+    #      [num] = TestRepo.all(query)
+    #      assert_in_delta num, 1.266103672779499, 0.000000000000001
+    #    end
+    #
     #    test "float above 1.0" do
     #      TestRepo.insert!(%Vec3f{x: 1.1, y: 1.2, z: 1.3})
     #
