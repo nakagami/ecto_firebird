@@ -2017,11 +2017,11 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     create =
       {:create, table(:posts),
        [
-         {:add, :a, :map, [default: %{baz: "boom", foo: "bar"}]}
+         {:add, :a, :map, [default: %{foo: "bar", baz: "boom"}]}
        ]}
 
     assert execute_ddl(create) == [
-             ~s|CREATE TABLE "posts" ("a" BLOB SUB_TYPE 1 DEFAULT ('{"baz":"boom","foo":"bar"}'))|
+             ~s|CREATE TABLE "posts" ("a" BLOB SUB_TYPE 1 DEFAULT ('{"foo":"bar","baz":"boom"}'))|
            ]
   end
 
