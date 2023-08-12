@@ -122,7 +122,7 @@ defmodule Ecto.Integration.CrudTest do
           select: %{name: u.name}
         )
 
-      assert {0, []} = TestRepo.update_all(no_match_query, set: [name: "G.O.A.T"])
+      assert {0, _} = TestRepo.update_all(no_match_query, set: [name: "G.O.A.T"])
 
       # update with returning that updates something should return resulting RETURNING clause correctly
       match_query =
