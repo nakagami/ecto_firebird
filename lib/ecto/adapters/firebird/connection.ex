@@ -152,9 +152,12 @@ defmodule Ecto.Adapters.Firebird.Connection do
   def all(query, as_prefix \\ []) do
     sources = create_names(query, as_prefix)
 
+    limit = limit(query, sources)
+    offset = offset(query, sources)
+
     cte = cte(query, sources)
     from = from(query, sources)
-    select = select(query, sources)
+    select = select(query, limit, offset, sources)
     join = join(query, sources)
     where = where(query, sources)
     group_by = group_by(query, sources)
@@ -162,8 +165,6 @@ defmodule Ecto.Adapters.Firebird.Connection do
     window = window(query, sources)
     combinations = combinations(query)
     order_by = order_by(query, sources)
-    limit = limit(query, sources)
-    offset = offset(query, sources)
 
     [
       cte,
@@ -175,9 +176,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
       having,
       window,
       combinations,
-      order_by,
-      limit,
-      offset
+      order_by
     ]
   end
 
@@ -688,7 +687,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
 
   @impl true
   def table_exists_query(table) do
-    {"SELECT name FROM sqlite_master WHERE type='table' AND name=? LIMIT 1", [table]}
+    {"SELECT FIRST 1 name FROM sqlite_master WHERE type='table' AND name=?", [table]}
   end
 
   ##
@@ -826,9 +825,11 @@ defmodule Ecto.Adapters.Firebird.Connection do
       message: "DISTINCT with multiple columns is not supported by Firebird"
   end
 
-  def select(%{select: %{fields: fields}, distinct: distinct} = query, sources) do
+  def select(%{select: %{fields: fields}, distinct: distinct} = query, limit, offset, sources) do
     [
       "SELECT ",
+      limit,
+      offset,
       distinct(distinct, sources, query) | select_fields(fields, sources, query)
     ]
   end
@@ -1114,13 +1115,13 @@ defmodule Ecto.Adapters.Firebird.Connection do
   def limit(%{limit: nil}, _sources), do: []
 
   def limit(%{limit: %{expr: expression}} = query, sources) do
-    [" LIMIT " | expr(expression, sources, query)]
+    ["FIRST ", expr(expression, sources, query), " "]
   end
 
   def offset(%{offset: nil}, _sources), do: []
 
   def offset(%{offset: %QueryExpr{expr: expression}} = query, sources) do
-    [" OFFSET " | expr(expression, sources, query)]
+    ["SKIP ", expr(expression, sources, query), " "]
   end
 
   defp combinations(%{combinations: combinations}) do
