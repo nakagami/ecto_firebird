@@ -26,7 +26,7 @@ defmodule Ecto.Adapters.Firebird do
   ## Storage API
 
   @impl Ecto.Adapter.Storage
-  def storage_down(opts) do
+  def storage_down(_opts) do
     # TODO:
     :ok
   end
