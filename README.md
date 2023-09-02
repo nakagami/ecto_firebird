@@ -8,12 +8,33 @@ Special thanks to the developers of Ecto SQLite3 Adapter!
 
 ## Installation
 
-Not yet published on hex.pm
-
 ```elixir
-def deps do
+defp deps do
   [
+    ...
     {:ecto_firebird, ">= 0.0.0"}
   ]
 end
+```
+
+## Usage
+Define your repo similar to this.
+
+```elixir
+defmodule MyApp.Repo do
+  use Ecto.Repo, otp_app: :my_app, adapter: Ecto.Adapters.Ecto.Adapters.Firebird
+end
+```
+
+Configure your repository similar to the following.
+
+```elixir
+config :my_app,
+  ecto_repos: [MyApp.Repo]
+
+config :my_app, MyApp.Repo,
+  hostname: "servername",
+  username: "SYSDBA",
+  password: "secret",
+  database: "/path/to/my/database.db"
 ```
