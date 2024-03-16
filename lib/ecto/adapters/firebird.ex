@@ -93,43 +93,13 @@ defmodule Ecto.Adapters.Firebird do
   ## Dumpers
   ##
 
-  @impl Ecto.Adapter
-  def dumpers(:binary, type) do
-    [type, &Codec.blob_encode/1]
-  end
+  @impl true
+  def dumpers(:binary, type), do: [type, &Codec.blob_encode/1]
+  def dumpers(:binary_id, type), do: [type, &Codec.uuid_encode/1]
+  def dumpers(:uuid, type), do: [type, &Codec.uuid_encode/1]
+  def dumpers({:array, _}, type), do: [type, &Codec.json_encode/1]
+  def dumpers({:map, _}, type), do: [&Ecto.Type.embedded_dump(type, &1, :json), &Codec.json_encode/1]
+  def dumpers(:map, type), do: [type, &Codec.json_encode/1]
+  def dumpers(_, type), do: [type]
 
-  @impl Ecto.Adapter
-  def dumpers(:boolean, type) do
-    [type, &Codec.bool_encode/1]
-  end
-
-  @impl Ecto.Adapter
-  def dumpers(:binary_id, type) do
-    [type, &Codec.uuid_encode/1]
-  end
-
-  @impl Ecto.Adapter
-  def dumpers(:uuid, type) do
-    [type, &Codec.uuid_encode/1]
-  end
-
-  @impl Ecto.Adapter
-  def dumpers({:array, _}, type) do
-    [type, &Codec.json_encode/1]
-  end
-
-  @impl Ecto.Adapter
-  def dumpers({:map, _}, type) do
-    [&Ecto.Type.embedded_dump(type, &1, :json), &Codec.json_encode/1]
-  end
-
-  @impl Ecto.Adapter
-  def dumpers(:map, type) do
-    [type, &Codec.json_encode/1]
-  end
-
-  @impl Ecto.Adapter
-  def dumpers(_, type) do
-    [type]
-  end
 end
