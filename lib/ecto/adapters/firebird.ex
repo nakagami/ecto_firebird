@@ -82,10 +82,14 @@ defmodule Ecto.Adapters.Firebird do
 
   #  @default_datetime_type :iso8601
 
-  @impl Ecto.Adapter
-  def loaders(:boolean, type) do
-    [&Codec.bool_decode/1, type]
-  end
+  @impl true
+  def loaders({:map, _}, type), do: [&Codec.json_decode/1, type]
+  def loaders(:map, type), do: [&Codec.json_decode/1, type]
+  def loaders(:float, type), do: [&Codec.float_decode/1, type]
+  def loaders(:boolean, type), do: [&Codec.bool_decode/1, type]
+  def loaders(:binary_id, type), do: [Ecto.UUID, type]
+  def loaders({:array, _}, type), do: [&Codec.json_decode/1, type]
+  def loaders(_, type), do: [type]
 
   #  @impl Ecto.Adapter
   #  def loaders(:naive_datetime_usec, type) do
@@ -117,40 +121,6 @@ defmodule Ecto.Adapters.Firebird do
   #    [&Codec.date_decode/1, type]
   #  end
   #
-  @impl Ecto.Adapter
-  def loaders({:map, _}, type) do
-    [&Codec.json_decode/1, &Ecto.Type.embedded_load(type, &1, :json)]
-  end
-
-  @impl Ecto.Adapter
-  def loaders({:array, _}, type) do
-    [&Codec.json_decode/1, type]
-  end
-
-  @impl Ecto.Adapter
-  def loaders(:map, type) do
-    [&Codec.json_decode/1, type]
-  end
-
-  @impl Ecto.Adapter
-  def loaders(:float, type) do
-    [&Codec.float_decode/1, type]
-  end
-
-  @impl Ecto.Adapter
-  def loaders(:decimal, type) do
-    [&Codec.decimal_decode/1, type]
-  end
-
-  @impl Ecto.Adapter
-  def loaders(:binary_id, type) do
-    [type]
-  end
-
-  @impl Ecto.Adapter
-  def loaders(:uuid, type) do
-    [type]
-  end
 
   # when we have an e.g., max(created_date) function
   # Ecto does not truly know the return type, hence :maybe
@@ -159,11 +129,6 @@ defmodule Ecto.Adapters.Firebird do
   #  def loaders({:maybe, :naive_datetime}, type) do
   #    [&Codec.naive_datetime_decode/1, type]
   #  end
-
-  @impl Ecto.Adapter
-  def loaders(_, type) do
-    [type]
-  end
 
   ##
   ## Dumpers
