@@ -465,6 +465,15 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0}
   end
 
+  test "offset limit" do
+    query = Schema |> select([r], r.x) |> order_by([r], r.x) |> offset(20) |> limit(40) |> plan()
+    assert all(query) == ~s{SELECT FIRST 40 SKIP 20 s0."x" FROM "schema" AS s0 ORDER BY s0."x"}
+    offset = 20
+    limit = 40
+    query = Schema |> select([r], r.x) |> order_by([r], r.x) |> offset(^offset) |> limit(^limit) |> plan()
+    assert all(query) == ~s{SELECT FIRST 40 SKIP 20 s0."x" FROM "schema" AS s0 ORDER BY s0."x"}
+  end
+
   test "union and union all" do
     base_query =
       Schema |> select([r], r.x) |> order_by(fragment("rand")) |> offset(10) |> limit(5)
