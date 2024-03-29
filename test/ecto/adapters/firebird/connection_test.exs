@@ -56,6 +56,14 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     query
   end
 
+  defp plan_query_params(query, operation \\ :all) do
+    {query, _cast_params, dump_params} =
+      Ecto.Adapter.Queryable.plan_query(operation, Ecto.Adapters.Firebird, query)
+
+    {query, dump_params}
+  end
+
+
   defp all(query), do: query |> SQL.all() |> IO.iodata_to_binary()
   defp update_all(query), do: query |> SQL.update_all() |> IO.iodata_to_binary()
   defp delete_all(query), do: query |> SQL.delete_all() |> IO.iodata_to_binary()
@@ -466,26 +474,27 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
   end
 
   test "offset limit" do
-    z = 44
-    query = Schema
+    {query, params} = Schema
       |> where([r], r.z == ^44)
       |> select([r], r.x)
       |> order_by([r], r.x)
       |> offset(20)
       |> limit(40)
-      |> plan()
+      |> plan_query_params()
     assert all(query) == ~s{SELECT FIRST 40 SKIP 20 s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x"}
+    assert params == [44]
 
     offset = 20
     limit = 40
-    query = Schema
+    {query, params} = Schema
       |> where([r], r.z == ^44)
       |> select([r], r.x)
       |> order_by([r], r.x)
       |> offset(^offset)
       |> limit(^limit)
-      |> plan()
-    assert all(query) == ~s{SELECT FIRST 40 SKIP 20 s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x"}
+      |> plan_query_params()
+    assert all(query) == ~s{SELECT FIRST ? SKIP ? s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x"}
+    assert params == [40, 20, 44]
   end
 
   test "union and union all" do
