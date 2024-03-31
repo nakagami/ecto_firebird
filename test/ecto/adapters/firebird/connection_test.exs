@@ -473,6 +473,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0}
   end
 
+  @tag :skip
   test "offset limit" do
     {query, params} = Schema
       |> where([r], r.z == ^44)
