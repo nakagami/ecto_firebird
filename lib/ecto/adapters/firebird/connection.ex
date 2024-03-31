@@ -152,12 +152,9 @@ defmodule Ecto.Adapters.Firebird.Connection do
   def all(query, as_prefix \\ []) do
     sources = create_names(query, as_prefix)
 
-    limit = limit(query, sources)
-    offset = offset(query, sources)
-
     cte = cte(query, sources)
     from = from(query, sources)
-    select = select(query, limit, offset, sources)
+    select = select(query, sources)
     join = join(query, sources)
     where = where(query, sources)
     group_by = group_by(query, sources)
@@ -825,11 +822,11 @@ defmodule Ecto.Adapters.Firebird.Connection do
       message: "DISTINCT with multiple columns is not supported by Firebird"
   end
 
-  def select(%{select: %{fields: fields}, distinct: distinct} = query, limit, offset, sources) do
+  def select(%{select: %{fields: fields}, distinct: distinct} = query, sources) do
     [
       "SELECT ",
-      limit,
-      offset,
+      limit(query, sources),
+      offset(query, sources),
       distinct(distinct, sources, query) | select_fields(fields, sources, query)
     ]
   end
