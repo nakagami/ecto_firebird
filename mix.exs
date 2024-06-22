@@ -7,7 +7,7 @@ defmodule EctoFirebird.MixProject do
     [
       app: :ecto_firebird,
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.12",
       name: "Ecto Firebird",
       description: "Firebird Ecto3 adapter",
       start_permanent: Mix.env() == :prod,
