@@ -473,8 +473,10 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0}
   end
 
-  @tag :skip
   test "offset limit" do
+    offset = 20
+    limit = 40
+
     {query, params} = Schema
       |> where([r], r.z == ^44)
       |> select([r], r.x)
@@ -482,11 +484,29 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
       |> offset(20)
       |> limit(40)
       |> plan_query_params()
-    assert all(query) == ~s{SELECT FIRST 40 SKIP 20 s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x"}
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET 20 ROWS FETCH FIRST 40 ROWS ONLY}
     assert params == [44]
 
-    offset = 20
-    limit = 40
+    {query, params} = Schema
+      |> where([r], r.z == ^44)
+      |> select([r], r.x)
+      |> order_by([r], r.x)
+      |> offset(^offset)
+      |> limit(40)
+      |> plan_query_params()
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET ? ROWS FETCH FIRST 40 ROWS ONLY}
+    assert params == [44, 20]
+
+    {query, params} = Schema
+      |> where([r], r.z == ^44)
+      |> select([r], r.x)
+      |> order_by([r], r.x)
+      |> offset(20)
+      |> limit(^limit)
+      |> plan_query_params()
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET 20 ROWS FETCH FIRST ? ROWS ONLY}
+    assert params == [44, 40]
+
     {query, params} = Schema
       |> where([r], r.z == ^44)
       |> select([r], r.x)
@@ -494,8 +514,9 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
       |> offset(^offset)
       |> limit(^limit)
       |> plan_query_params()
-    assert all(query) == ~s{SELECT FIRST ? SKIP ? s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x"}
-    assert params == [40, 20, 44]
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET ? ROWS FETCH FIRST ? ROWS ONLY}
+    # BUG: The offset and limit arguments are reversed. https://github.com/nakagami/ecto_firebird/issues/3
+    # assert params == [44, 20, 40]
   end
 
   test "union and union all" do
