@@ -162,6 +162,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
     window = window(query, sources)
     combinations = combinations(query)
     order_by = order_by(query, sources)
+    offset_limit = offset_limit(query, sources)
 
     [
       cte,
@@ -173,7 +174,8 @@ defmodule Ecto.Adapters.Firebird.Connection do
       having,
       window,
       combinations,
-      order_by
+      order_by,
+      offset_limit
     ]
   end
 
@@ -825,8 +827,6 @@ defmodule Ecto.Adapters.Firebird.Connection do
   def select(%{select: %{fields: fields}, distinct: distinct} = query, sources) do
     [
       "SELECT ",
-      limit(query, sources),
-      offset(query, sources),
       distinct(distinct, sources, query) | select_fields(fields, sources, query)
     ]
   end
@@ -1109,16 +1109,18 @@ defmodule Ecto.Adapters.Firebird.Connection do
     end
   end
 
-  def limit(%{limit: nil}, _sources), do: []
+  defp offset_limit(%{offset: nil, limit: nil}, _sources), do: []
 
-  def limit(%{limit: %{expr: expression}} = query, sources) do
-    ["FIRST ", expr(expression, sources, query), " "]
+  defp offset_limit(%{offset: %{expr: offset_expr}, limit: nil} = query, sources) do
+    [" OFFSET ", expr(offset_expr, sources, query), " ROWS"]
   end
 
-  def offset(%{offset: nil}, _sources), do: []
+  defp offset_limit(%{offset: nil, limit: %{expr: limit_expr}} = query, sources) do
+    [" FETCH FIRST ", expr(limit_expr, sources, query), " ROWS ONLY"]
+  end
 
-  def offset(%{offset: %QueryExpr{expr: expression}} = query, sources) do
-    ["SKIP ", expr(expression, sources, query), " "]
+  defp offset_limit(%{offset: %{expr: offset_expr}, limit: %{expr: limit_expr}} = query, sources) do
+    [" OFFSET ", expr(offset_expr, sources, query), " ROWS FETCH FIRST ", expr(limit_expr, sources, query), " ROWS ONLY"]
   end
 
   defp combinations(%{combinations: combinations}) do
