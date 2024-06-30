@@ -777,7 +777,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
         # TODO: Should we have cell wise value support?
         #       Essentially ``?1 ?2 ?3`` instead of ``? ? ?``
         # {['?' | Integer.to_string(counter)], counter + 1}
-        {['?'], counter + 1}
+        {[~c"?"], counter + 1}
     end)
   end
 
@@ -1192,7 +1192,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
   ##
 
   def expr({:^, [], [_ix]}, _sources, _query) do
-    '?'
+    ~c"?"
   end
 
   # workaround for the fact that Firebird does not support specifying table
@@ -1621,13 +1621,6 @@ defmodule Ecto.Adapters.Firebird.Connection do
 
   defp check_expr(%{name: name, expr: expr}),
     do: [" CONSTRAINT ", name, " CHECK (", expr, ")"]
-
-  defp collate_expr(nil), do: []
-
-  defp collate_expr(type) when is_atom(type),
-    do: type |> Atom.to_string() |> collate_expr()
-
-  defp collate_expr(type), do: [" COLLATE ", String.upcase(type)]
 
   defp null_expr(false), do: " NOT NULL"
   defp null_expr(true), do: " NULL"

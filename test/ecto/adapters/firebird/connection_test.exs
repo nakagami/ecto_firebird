@@ -507,7 +507,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET 20 ROWS FETCH FIRST ? ROWS ONLY}
     assert params == [44, 40]
 
-    {query, params} = Schema
+    {query, _params} = Schema
       |> where([r], r.z == ^44)
       |> select([r], r.x)
       |> order_by([r], r.x)
