@@ -18,11 +18,12 @@ end
 ```
 
 ## Usage
+
 Define your repo similar to this.
 
 ```elixir
 defmodule MyApp.Repo do
-  use Ecto.Repo, otp_app: :my_app, adapter: Ecto.Adapters.Ecto.Adapters.Firebird
+  use Ecto.Repo, otp_app: :my_app, adapter: Ecto.Adapters.Firebird
 end
 ```
 
