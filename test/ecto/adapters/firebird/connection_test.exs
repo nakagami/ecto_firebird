@@ -63,7 +63,6 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     {query, dump_params}
   end
 
-
   defp all(query), do: query |> SQL.all() |> IO.iodata_to_binary()
   defp update_all(query), do: query |> SQL.update_all() |> IO.iodata_to_binary()
   defp delete_all(query), do: query |> SQL.delete_all() |> IO.iodata_to_binary()
@@ -477,46 +476,67 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     offset = 20
     limit = 40
 
-    {query, params} = Schema
+    {query, params} =
+      Schema
       |> where([r], r.z == ^44)
       |> select([r], r.x)
       |> order_by([r], r.x)
       |> offset(20)
       |> limit(40)
       |> plan_query_params()
-    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET 20 ROWS FETCH FIRST 40 ROWS ONLY}
+
+    assert all(query) ==
+             ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET 20 ROWS FETCH FIRST 40 ROWS ONLY}
+
     assert params == [44]
 
-    {query, params} = Schema
+    {query, params} =
+      Schema
       |> where([r], r.z == ^44)
       |> select([r], r.x)
       |> order_by([r], r.x)
       |> offset(^offset)
       |> limit(40)
       |> plan_query_params()
-    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET ? ROWS FETCH FIRST 40 ROWS ONLY}
-    assert params == [44, 20]
 
-    {query, params} = Schema
+    assert all(query) ==
+             ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET ? ROWS FETCH FIRST 40 ROWS ONLY}
+
+    assert params == [44, 20]
+    assert {:cache, {_, _}} = Ecto.Adapters.Firebird.prepare(:all, query)
+
+    {query, params} =
+      Schema
       |> where([r], r.z == ^44)
       |> select([r], r.x)
       |> order_by([r], r.x)
       |> offset(20)
       |> limit(^limit)
       |> plan_query_params()
-    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET 20 ROWS FETCH FIRST ? ROWS ONLY}
-    assert params == [44, 40]
 
-    {query, _params} = Schema
+    assert all(query) ==
+             ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET 20 ROWS FETCH FIRST ? ROWS ONLY}
+
+    assert params == [44, 40]
+    assert {:cache, {_, _}} = Ecto.Adapters.Firebird.prepare(:all, query)
+
+    {query, params} =
+      Schema
       |> where([r], r.z == ^44)
       |> select([r], r.x)
       |> order_by([r], r.x)
       |> offset(^offset)
       |> limit(^limit)
       |> plan_query_params()
-    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET ? ROWS FETCH FIRST ? ROWS ONLY}
-    # BUG: The offset and limit arguments are reversed. https://github.com/nakagami/ecto_firebird/issues/3
-    # assert params == [44, 20, 40]
+
+    sql =
+      ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0.\"z\" = ?) ORDER BY s0."x" OFFSET ? ROWS FETCH FIRST ? ROWS ONLY}
+
+    assert all(query) == sql
+    # Ecto plans limit before offset, so dump_params are [where, limit, offset].
+    # The adapter swaps them at execution time to match Firebird's OFFSET/FETCH order.
+    assert params == [44, 40, 20]
+    assert {:nocache, {^sql, {1, 2}}} = Ecto.Adapters.Firebird.prepare(:all, query)
   end
 
   test "union and union all" do
@@ -613,7 +633,9 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 OFFSET 5 ROWS}
 
     query = Schema |> offset([r], 5) |> limit([r], 3) |> select([], true) |> plan()
-    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 OFFSET 5 ROWS FETCH FIRST 3 ROWS ONLY}
+
+    assert all(query) ==
+             ~s{SELECT 1 FROM "schema" AS s0 OFFSET 5 ROWS FETCH FIRST 3 ROWS ONLY}
   end
 
   test "lock" do

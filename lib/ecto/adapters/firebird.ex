@@ -20,8 +20,105 @@ defmodule Ecto.Adapters.Firebird do
 
   use Ecto.Adapters.SQL, driver: :firebirdex
 
+  defoverridable stream: 5
+
   @behaviour Ecto.Adapter.Storage
   alias Ecto.Adapters.Firebird.Codec
+
+  ## Query
+
+  @impl true
+  def prepare(:all, query) do
+    sql = query |> Ecto.Adapters.Firebird.Connection.all() |> IO.iodata_to_binary()
+
+    case limit_offset_param_indices(query) do
+      {limit_idx, offset_idx} ->
+        # Firebird's OFFSET/FETCH syntax requires parameters in the order
+        # [offset, limit], but Ecto plans them as [limit, offset].
+        # Disable caching for these queries so execute/5 can swap them.
+        {:nocache, {sql, {limit_idx, offset_idx}}}
+
+      nil ->
+        {:cache, {System.unique_integer([:positive]), sql}}
+    end
+  end
+
+  def prepare(operation, query) when operation in [:update_all, :delete_all] do
+    super(operation, query)
+  end
+
+  @impl true
+  def execute(
+        adapter_meta,
+        query_meta,
+        {:nocache, {prepared, swap_indices}},
+        params,
+        opts
+      ) do
+    params = swap_params(params, swap_indices)
+
+    Ecto.Adapters.SQL.execute(
+      :named,
+      adapter_meta,
+      query_meta,
+      {:nocache, {0, prepared}},
+      params,
+      opts
+    )
+  end
+
+  def execute(adapter_meta, query_meta, prepared, params, opts) do
+    Ecto.Adapters.SQL.execute(:named, adapter_meta, query_meta, prepared, params, opts)
+  end
+
+  @impl true
+  def stream(
+        adapter_meta,
+        query_meta,
+        {:nocache, {prepared, swap_indices}},
+        params,
+        opts
+      ) do
+    params = swap_params(params, swap_indices)
+
+    Ecto.Adapters.SQL.stream(
+      adapter_meta,
+      query_meta,
+      {:nocache, {0, prepared}},
+      params,
+      opts
+    )
+  end
+
+  def stream(adapter_meta, query_meta, prepared, params, opts) do
+    Ecto.Adapters.SQL.stream(adapter_meta, query_meta, prepared, params, opts)
+  end
+
+  defp limit_offset_param_indices(%{
+         limit: %{expr: limit_expr},
+         offset: %{expr: offset_expr}
+       }) do
+    with limit_idx when is_integer(limit_idx) <- param_index(limit_expr),
+         offset_idx when is_integer(offset_idx) <- param_index(offset_expr) do
+      {limit_idx, offset_idx}
+    else
+      _ -> nil
+    end
+  end
+
+  defp limit_offset_param_indices(_query), do: nil
+
+  defp param_index({:^, [], [idx]}), do: idx
+  defp param_index(_expr), do: nil
+
+  defp swap_params(params, {idx1, idx2}) do
+    val1 = Enum.at(params, idx1)
+    val2 = Enum.at(params, idx2)
+
+    params
+    |> List.replace_at(idx1, val2)
+    |> List.replace_at(idx2, val1)
+  end
 
   ## Storage API
 
@@ -98,8 +195,10 @@ defmodule Ecto.Adapters.Firebird do
   def dumpers(:binary_id, type), do: [type, &Codec.uuid_encode/1]
   def dumpers(:uuid, type), do: [type, &Codec.uuid_encode/1]
   def dumpers({:array, _}, type), do: [type, &Codec.json_encode/1]
-  def dumpers({:map, _}, type), do: [&Ecto.Type.embedded_dump(type, &1, :json), &Codec.json_encode/1]
+
+  def dumpers({:map, _}, type),
+    do: [&Ecto.Type.embedded_dump(type, &1, :json), &Codec.json_encode/1]
+
   def dumpers(:map, type), do: [type, &Codec.json_encode/1]
   def dumpers(_, type), do: [type]
-
 end

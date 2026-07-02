@@ -1119,8 +1119,17 @@ defmodule Ecto.Adapters.Firebird.Connection do
     [" FETCH FIRST ", expr(limit_expr, sources, query), " ROWS ONLY"]
   end
 
-  defp offset_limit(%{offset: %{expr: offset_expr}, limit: %{expr: limit_expr}} = query, sources) do
-    [" OFFSET ", expr(offset_expr, sources, query), " ROWS FETCH FIRST ", expr(limit_expr, sources, query), " ROWS ONLY"]
+  defp offset_limit(
+         %{offset: %{expr: offset_expr}, limit: %{expr: limit_expr}} = query,
+         sources
+       ) do
+    [
+      " OFFSET ",
+      expr(offset_expr, sources, query),
+      " ROWS FETCH FIRST ",
+      expr(limit_expr, sources, query),
+      " ROWS ONLY"
+    ]
   end
 
   defp combinations(%{combinations: combinations}) do
