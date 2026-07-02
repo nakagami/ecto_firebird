@@ -78,64 +78,33 @@ defmodule Ecto.Adapters.Firebird.Connection do
     raise RuntimeError, "stream is not supported in the Firebird adapter"
   end
 
-  # we want to return the name of the underlying index that caused
-  # the constraint error, but in SQLite as far as I can tell there
-  # is no way to do this, so we name the index according to ecto
-  # convention, even if technically it _could_ have a different name
-  defp constraint_name_hack(constraint) do
-    if String.contains?(constraint, ", ") do
-      # "a.b, a.c" -> a_b_c_index
-      constraint
-      |> String.split(", ")
-      |> Enum.with_index()
-      |> Enum.map(fn
-        {table_col, 0} ->
-          String.replace(table_col, ".", "_")
-
-        {table_col, _} ->
-          table_col
-          |> String.split(".")
-          |> List.last()
-      end)
-      |> Enum.concat(["index"])
-      |> Enum.join("_")
-    else
-      constraint
-      |> String.split(".")
-      |> Enum.concat(["index"])
-      |> Enum.join("_")
-    end
-  end
+  # Firebird surfaces integrity violations as a `%Firebirdex.Error{}` whose
+  # `reason` carries the engine message (English, from firebird.msg) together
+  # with the real constraint name. We parse that message to build the keyword
+  # list Ecto expects. The name is matched by Ecto against the `:name` option
+  # of `unique_constraint/2`, `foreign_key_constraint/2` and
+  # `check_constraint/2`.
+  #
+  # Messages captured from Firebird 3:
+  #
+  #   unique/pk: violation of PRIMARY or UNIQUE KEY constraint "UQ_CODE" on table "T"
+  #   foreign:   violation of FOREIGN KEY constraint "FK_CHILD_PARENT" on table "T"
+  #   check:     Operation violates CHECK constraint CK_N on view or table T
+  #
+  # Note: UNIQUE/PRIMARY KEY and FOREIGN KEY share the same error `number`
+  # (335545072), so the message text is the only reliable discriminator.
+  @unique_key_re ~r/violation of PRIMARY or UNIQUE KEY constraint "([^"]+)"/
+  @foreign_key_re ~r/violation of FOREIGN KEY constraint "([^"]+)"/
+  @check_re ~r/Operation violates CHECK constraint (\S+) on/
 
   @impl true
-  def to_constraints(
-        %Firebirdex.Error{reason: "UNIQUE constraint failed: index " <> constraint},
-        _opts
-      ) do
-    # TODO: match error message
-    [unique: String.trim(constraint, ~s('))]
-  end
-
-  def to_constraints(
-        %Firebirdex.Error{reason: "UNIQUE constraint failed: " <> constraint},
-        _opts
-      ) do
-    # TODO: match error message
-    [unique: constraint_name_hack(constraint)]
-  end
-
-  def to_constraints(%Firebirdex.Error{reason: "FOREIGN KEY constraint failed"}, _opts) do
-    # TODO: match error message
-    # unfortunately we have no other date from Firebird
-    [foreign_key: nil]
-  end
-
-  def to_constraints(
-        %Firebirdex.Error{reason: "CHECK constraint failed: " <> name},
-        _opts
-      ) do
-    # TODO: match error message
-    [check: name]
+  def to_constraints(%Firebirdex.Error{reason: reason}, _opts) when is_binary(reason) do
+    cond do
+      match = Regex.run(@unique_key_re, reason) -> [unique: Enum.at(match, 1)]
+      match = Regex.run(@foreign_key_re, reason) -> [foreign_key: Enum.at(match, 1)]
+      match = Regex.run(@check_re, reason) -> [check: Enum.at(match, 1)]
+      true -> []
+    end
   end
 
   def to_constraints(_, _), do: []
