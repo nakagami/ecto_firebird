@@ -9,6 +9,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
   alias Ecto.Migration.Reference
   alias Ecto.Migration.Table
   alias Ecto.Query.BooleanExpr
+  alias Ecto.Query.ByExpr
   alias Ecto.Query.JoinExpr
   alias Ecto.Query.QueryExpr
   alias Ecto.Query.WithExpr
@@ -815,10 +816,10 @@ defmodule Ecto.Adapters.Firebird.Connection do
   def handle_call(fun, _arity), do: {:fun, Atom.to_string(fun)}
 
   defp distinct(nil, _sources, _query), do: []
-  defp distinct(%QueryExpr{expr: true}, _sources, _query), do: "DISTINCT "
-  defp distinct(%QueryExpr{expr: false}, _sources, _query), do: []
+  defp distinct(%ByExpr{expr: true}, _sources, _query), do: "DISTINCT "
+  defp distinct(%ByExpr{expr: false}, _sources, _query), do: []
 
-  defp distinct(%QueryExpr{expr: exprs}, _sources, query) when is_list(exprs) do
+  defp distinct(%ByExpr{expr: exprs}, _sources, query) when is_list(exprs) do
     raise Ecto.QueryError,
       query: query,
       message: "DISTINCT with multiple columns is not supported by Firebird"
@@ -1036,7 +1037,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
   def group_by(%{group_bys: group_bys} = query, sources) do
     [
       " GROUP BY "
-      | intersperse_map(group_bys, ", ", fn %QueryExpr{expr: expression} ->
+      | intersperse_map(group_bys, ", ", fn %ByExpr{expr: expression} ->
           intersperse_map(expression, ", ", &expr(&1, sources, query))
         end)
     ]
@@ -1313,6 +1314,10 @@ defmodule Ecto.Adapters.Firebird.Connection do
 
   def expr({:literal, _, [literal]}, _sources, _query) do
     quote_name(literal)
+  end
+
+  def expr({:identifier, _, [name]}, _sources, _query) do
+    quote_name(name)
   end
 
   def expr({:selected_as, _, [name]}, _sources, _query) do
