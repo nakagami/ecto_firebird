@@ -36,7 +36,9 @@ defmodule Ecto.Adapters.Firebird do
         # Firebird's OFFSET/FETCH syntax requires parameters in the order
         # [offset, limit], but Ecto plans them as [limit, offset].
         # Disable caching for these queries so execute/5 can swap them.
-        {:nocache, {sql, {limit_idx, offset_idx}}}
+        # We use the swap indices as the cache id so the tuple still has
+        # the standard {:nocache, {id, sql}} shape expected by to_sql/3.
+        {:nocache, {{limit_idx, offset_idx}, sql}}
 
       nil ->
         {:cache, {System.unique_integer([:positive]), sql}}
@@ -51,11 +53,11 @@ defmodule Ecto.Adapters.Firebird do
   def execute(
         adapter_meta,
         query_meta,
-        {:nocache, {prepared, swap_indices}},
+        {:nocache, {{limit_idx, offset_idx}, prepared}},
         params,
         opts
       ) do
-    params = swap_params(params, swap_indices)
+    params = swap_params(params, {limit_idx, offset_idx})
 
     Ecto.Adapters.SQL.execute(
       :named,
@@ -75,11 +77,11 @@ defmodule Ecto.Adapters.Firebird do
   def stream(
         adapter_meta,
         query_meta,
-        {:nocache, {prepared, swap_indices}},
+        {:nocache, {{limit_idx, offset_idx}, prepared}},
         params,
         opts
       ) do
-    params = swap_params(params, swap_indices)
+    params = swap_params(params, {limit_idx, offset_idx})
 
     Ecto.Adapters.SQL.stream(
       adapter_meta,

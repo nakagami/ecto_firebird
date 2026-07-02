@@ -536,7 +536,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     # Ecto plans limit before offset, so dump_params are [where, limit, offset].
     # The adapter swaps them at execution time to match Firebird's OFFSET/FETCH order.
     assert params == [44, 40, 20]
-    assert {:nocache, {^sql, {1, 2}}} = Ecto.Adapters.Firebird.prepare(:all, query)
+    assert {:nocache, {{1, 2}, ^sql}} = Ecto.Adapters.Firebird.prepare(:all, query)
   end
 
   test "union and union all" do
