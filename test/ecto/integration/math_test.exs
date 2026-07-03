@@ -32,7 +32,7 @@ defmodule Ecto.Integration.MathTest do
       create_product(account, Decimal.new("2.00"))
       create_product(account, Decimal.new("2.67"))
 
-      query = from(p in Product, select: max(p.price))
+      query = from(p in Product, where: p.account_id == ^account.id, select: max(p.price))
 
       [highest_price] = TestRepo.all(query)
       assert Decimal.equal?(highest_price, Decimal.new("2.67"))
@@ -46,7 +46,7 @@ defmodule Ecto.Integration.MathTest do
       create_product(account, Decimal.new("2.00"))
       create_product(account, Decimal.new("2.67"))
 
-      query = from(p in Product, select: min(p.price))
+      query = from(p in Product, where: p.account_id == ^account.id, select: min(p.price))
 
       [lowest_price] = TestRepo.all(query)
       assert Decimal.equal?(lowest_price, Decimal.new("1.23"))
@@ -60,7 +60,7 @@ defmodule Ecto.Integration.MathTest do
       create_product(account, Decimal.new("2.00"))
       create_product(account, Decimal.new("2.67"))
 
-      query = from(p in Product, select: sum(p.price))
+      query = from(p in Product, where: p.account_id == ^account.id, select: sum(p.price))
 
       [total] = TestRepo.all(query)
       assert Decimal.equal?(total, Decimal.new("5.90"))
@@ -74,7 +74,7 @@ defmodule Ecto.Integration.MathTest do
       create_product(account, Decimal.new("2.00"))
       create_product(account, Decimal.new("2.67"))
 
-      query = from(p in Product, select: avg(p.price))
+      query = from(p in Product, where: p.account_id == ^account.id, select: avg(p.price))
 
       [average] = TestRepo.all(query)
       assert Decimal.equal?(average, Decimal.new("1.966"))

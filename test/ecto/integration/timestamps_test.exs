@@ -57,10 +57,12 @@ defmodule Ecto.Integration.TimestampsTest do
 
   test "max of naive datetime" do
     # iso8601 type
-    TestRepo.delete_all(UserNaiveDatetime)
     datetime = ~N[2014-01-16 20:26:51]
-    TestRepo.insert!(%UserNaiveDatetime{inserted_at: datetime})
-    query = from(p in UserNaiveDatetime, select: max(p.inserted_at))
+    user = TestRepo.insert!(%UserNaiveDatetime{name: "Bob", inserted_at: datetime})
+
+    query =
+      from(p in UserNaiveDatetime, where: p.id == ^user.id, select: max(p.inserted_at))
+
     assert [^datetime] = TestRepo.all(query)
   end
 
@@ -118,7 +120,7 @@ defmodule Ecto.Integration.TimestampsTest do
            ] =
              Product
              |> select([p], p)
-             |> where([p], p.approved_at >= ^since)
+             |> where([p], p.account_id == ^account.id and p.approved_at >= ^since)
              |> order_by([p], desc: p.approved_at)
              |> TestRepo.all()
   end
