@@ -202,8 +202,37 @@ defmodule Ecto.Adapters.Firebird.Connection do
     ]
   end
 
-  @impl true
-  def insert(prefix, table, [], [[]], on_conflict, returning, []) do
+  if {:insert, 8} in Ecto.Adapters.SQL.Connection.behaviour_info(:callbacks) do
+    @impl true
+    def insert(prefix, table, [], [[]], on_conflict, returning, [], _opts) do
+      do_insert(prefix, table, [], [[]], on_conflict, returning)
+    end
+
+    @impl true
+    def insert(prefix, table, header, rows, on_conflict, returning, _placeholders, _opts) do
+      do_insert(prefix, table, header, rows, on_conflict, returning)
+    end
+
+    def insert(prefix, table, header, rows, on_conflict, returning, placeholders) do
+      insert(prefix, table, header, rows, on_conflict, returning, placeholders, [])
+    end
+  else
+    @impl true
+    def insert(prefix, table, [], [[]], on_conflict, returning, []) do
+      do_insert(prefix, table, [], [[]], on_conflict, returning)
+    end
+
+    @impl true
+    def insert(prefix, table, header, rows, on_conflict, returning, _placeholders) do
+      do_insert(prefix, table, header, rows, on_conflict, returning)
+    end
+
+    def insert(prefix, table, header, rows, on_conflict, returning, placeholders, _opts) do
+      insert(prefix, table, header, rows, on_conflict, returning, placeholders)
+    end
+  end
+
+  defp do_insert(prefix, table, [], [[]], on_conflict, returning) do
     [
       "INSERT INTO ",
       quote_table(prefix, table),
@@ -213,7 +242,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
     ]
   end
 
-  def insert(prefix, table, header, rows, on_conflict, returning, _placeholders) do
+  defp do_insert(prefix, table, header, rows, on_conflict, returning) do
     fields = quote_names(header)
 
     [
