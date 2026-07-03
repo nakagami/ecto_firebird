@@ -45,8 +45,8 @@ defmodule EctoFirebird.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ecto_sql, "~> 3.11"},
-      {:ecto, "~> 3.11"},
+      {:ecto_sql, "~> 3.14"},
+      {:ecto, "~> 3.14"},
       {:firebirdex, "~> 0.3.12"},
       {:jason, ">= 0.0.0"},
       {:temp, "~> 0.4", only: [:test]},
