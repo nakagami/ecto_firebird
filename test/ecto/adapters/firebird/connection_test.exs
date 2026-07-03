@@ -84,6 +84,74 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     IO.iodata_to_binary(SQL.delete(prefx, table, filter, returning))
   end
 
+  describe "to_constraints/2" do
+    # The `reason` strings below are the actual messages Firebird 3 returns
+    # (captured through firebirdex), not SQLite ones. UNIQUE/PRIMARY KEY and
+    # FOREIGN KEY share error number 335545072; CHECK uses 335544842.
+
+    test "unique key violation returns the constraint name" do
+      error = %Firebirdex.Error{
+        number: 335_545_072,
+        reason:
+          ~s|violation of PRIMARY or UNIQUE KEY constraint "UQ_ZZ_CODE" on table "ZZ_SCRATCH_UNIQ"\nProblematic key value is ("CODE" = 'A')\n|
+      }
+
+      assert SQL.to_constraints(error, []) == [unique: "UQ_ZZ_CODE"]
+    end
+
+    test "primary key violation is reported as a unique constraint" do
+      error = %Firebirdex.Error{
+        number: 335_545_072,
+        reason:
+          ~s|violation of PRIMARY or UNIQUE KEY constraint "INTEG_1923" on table "ZZ_SCRATCH_UNIQ"\nProblematic key value is ("ID" = 1)\n|
+      }
+
+      assert SQL.to_constraints(error, []) == [unique: "INTEG_1923"]
+    end
+
+    test "foreign key violation on insert returns the constraint name" do
+      error = %Firebirdex.Error{
+        number: 335_545_072,
+        reason:
+          ~s|violation of FOREIGN KEY constraint "FK_ZZ_CHILD_PARENT" on table "ZZ_SCRATCH_CHILD"\nForeign key reference target does not exist\nProblematic key value is ("PARENT_ID" = 999)\n|
+      }
+
+      assert SQL.to_constraints(error, []) == [foreign_key: "FK_ZZ_CHILD_PARENT"]
+    end
+
+    test "foreign key violation on delete returns the constraint name" do
+      error = %Firebirdex.Error{
+        number: 335_545_072,
+        reason:
+          ~s|violation of FOREIGN KEY constraint "FK_ZZ_CHILD_PARENT" on table "ZZ_SCRATCH_CHILD"\nForeign key references are present for the record\nProblematic key value is ("ID" = 1)\n|
+      }
+
+      assert SQL.to_constraints(error, []) == [foreign_key: "FK_ZZ_CHILD_PARENT"]
+    end
+
+    test "check constraint violation returns the constraint name" do
+      error = %Firebirdex.Error{
+        number: 335_544_842,
+        reason:
+          ~s|Operation violates CHECK constraint INTEG_1930 on view or table ZZ_SCRATCH_CHK\nAt trigger 'CHECK_9'\n|
+      }
+
+      assert SQL.to_constraints(error, []) == [check: "INTEG_1930"]
+    end
+
+    test "unrelated errors return no constraints" do
+      not_null = %Firebirdex.Error{
+        number: 335_544_347,
+        reason:
+          ~s|validation error for column "ZZ_SCRATCH_UNIQ"."ID", value "*** null ***"\n|
+      }
+
+      assert SQL.to_constraints(not_null, []) == []
+      assert SQL.to_constraints(%Firebirdex.Error{reason: "some other error"}, []) == []
+      assert SQL.to_constraints(%Firebirdex.Error{reason: nil}, []) == []
+    end
+  end
+
   test "from" do
     query = Schema |> select([r], r.x) |> plan()
     assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0}
@@ -2481,7 +2549,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
   #
   #      error = %Firebirdex.Error{
   #        reason:
-  #          ~s("violation of PRIMARY or UNIQUE KEY constraint "email" on table "users")
+  #          ~s|"violation of PRIMARY or UNIQUE KEY constraint "email" on table "users"|
   #      }
   #
   #      assert Connection.to_constraints(error, []) == [unique: "users_email_index"]
