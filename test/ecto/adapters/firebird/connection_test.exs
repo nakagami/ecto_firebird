@@ -1017,7 +1017,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
       |> plan()
 
     assert all(query) ==
-             ~s{SELECT s0 IN (SELECT value FROM JSON_EACH('[1,2,3]')) FROM "schema" AS s0}
+             ~s{SELECT s0 IN (1,2,3) FROM "schema" AS s0}
 
     query = Schema |> select([e], 1 in [1, e.x, 3]) |> plan()
     assert all(query) == ~s{SELECT 1 IN (1,s0."x",3) FROM "schema" AS s0}
@@ -1027,6 +1027,27 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     query = Schema |> select([e], ^1 in [1, ^2, 3]) |> plan()
     assert all(query) == ~s{SELECT ? IN (1,?,3) FROM "schema" AS s0}
+  end
+
+  test "in with a literal list" do
+    query = Schema |> where([r], r.x in [1, 2, 3]) |> select([r], r.x) |> plan()
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0."x" IN (1,2,3))}
+
+    query = Schema |> where([r], r.x not in [1, 2, 3]) |> select([r], r.x) |> plan()
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (NOT (s0."x" IN (1,2,3)))}
+
+    query =
+      Schema
+      |> where([r], fragment("?", r.x) in ["a", "b"])
+      |> select([r], r.x)
+      |> plan()
+
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0."x" IN ('a','b'))}
+  end
+
+  test "boolean literals in value positions keep integer form" do
+    query = Schema |> select([e], true) |> plan()
+    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0}
   end
 
   test "in subquery" do

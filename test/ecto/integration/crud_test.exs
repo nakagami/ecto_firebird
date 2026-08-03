@@ -13,6 +13,29 @@ defmodule Ecto.Integration.CrudTest do
     Ecto.Adapters.SQL.Sandbox.unboxed_run(TestRepo, fun)
   end
 
+  describe "in" do
+    test "literal list runs against the database" do
+      {:ok, u1} = TestRepo.insert(%User{name: "John"}, [])
+      {:ok, _u2} = TestRepo.insert(%User{name: "James"}, [])
+
+      names =
+        User
+        |> where([u], u.name in ["John", "Nobody"])
+        |> select([u], u.name)
+        |> TestRepo.all()
+
+      assert names == ["John"]
+
+      ids =
+        User
+        |> where([u], u.id not in [-1, -2])
+        |> select([u], u.id)
+        |> TestRepo.all()
+
+      assert u1.id in ids
+    end
+  end
+
   describe "insert" do
     test "insert user" do
       {:ok, user1} = TestRepo.insert(%User{name: "John"}, [])
