@@ -81,6 +81,20 @@ defmodule Ecto.Integration.MathTest do
     end
   end
 
+  describe "distinct aggregates" do
+    test "count" do
+      account = create_account("Company")
+      create_product(account, Decimal.new("1.23"))
+      create_product(account, Decimal.new("1.23"))
+      create_product(account, Decimal.new("2.00"))
+
+      query =
+        from(p in Product, where: p.account_id == ^account.id, select: count(p.price, :distinct))
+
+      assert [2] = TestRepo.all(query)
+    end
+  end
+
   describe "acos" do
     #    test "decimal above 1.0" do
     #      account = create_account("Company")

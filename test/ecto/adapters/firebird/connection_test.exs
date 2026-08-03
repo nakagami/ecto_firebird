@@ -409,10 +409,8 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     query = Schema |> select([r], count(r.x)) |> plan()
     assert all(query) == ~s{SELECT count(s0."x") FROM "schema" AS s0}
 
-    assert_raise Ecto.QueryError, fn ->
-      query = Schema |> select([r], count(r.x, :distinct)) |> plan()
-      all(query)
-    end
+    query = Schema |> select([r], count(r.x, :distinct)) |> plan()
+    assert all(query) == ~s{SELECT count(DISTINCT s0."x") FROM "schema" AS s0}
 
     query = Schema |> select([r], count()) |> plan()
     assert all(query) == ~s{SELECT count(*) FROM "schema" AS s0}

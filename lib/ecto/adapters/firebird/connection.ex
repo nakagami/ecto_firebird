@@ -1386,10 +1386,10 @@ defmodule Ecto.Adapters.Firebird.Connection do
   def expr({fun, _, args}, sources, query) when is_atom(fun) and is_list(args) do
     {modifier, args} =
       case args do
-        [_rest, :distinct] ->
-          raise Ecto.QueryError,
-            query: query,
-            message: "Distinct not supported in expressions"
+        # Firebird supports the SQL-92 DISTINCT qualifier inside aggregates,
+        # e.g. COUNT(DISTINCT x) / SUM(DISTINCT x).
+        [rest, :distinct] ->
+          {"DISTINCT ", [rest]}
 
         _ ->
           {[], args}
