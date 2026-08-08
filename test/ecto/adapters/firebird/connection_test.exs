@@ -973,7 +973,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
       from(r in Schema, []) |> select([r], (r.x > 0 and r.y > ^(-z)) or true) |> plan()
 
     assert all(query) ==
-             ~s{SELECT ((s0."x" > 0) AND (s0."y" > ?)) OR 1 FROM "schema" AS s0}
+             ~s{SELECT ((s0."x" > 0) AND (s0."y" > ?)) OR 1=1 FROM "schema" AS s0}
   end
 
   test "in expression" do
@@ -1025,6 +1025,28 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     query = Schema |> select([e], ^1 in [1, ^2, 3]) |> plan()
     assert all(query) == ~s{SELECT ? IN (1,?,3) FROM "schema" AS s0}
+  end
+
+  test "boolean literals in predicate positions" do
+    query = Schema |> where([e], false) |> select([e], e.x) |> plan()
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (1=0)}
+
+    query = Schema |> where([e], e.x == 1 or false) |> select([e], e.x) |> plan()
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE ((s0."x" = 1) OR 1=0)}
+
+    query = Schema |> where([e], not false) |> select([e], e.x) |> plan()
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (NOT (1=0))}
+  end
+
+  test "empty in lists in predicate positions" do
+    query = Schema |> where([e], e.x in []) |> select([e], e.x) |> plan()
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (1=0)}
+
+    query = Schema |> where([e], e.x in ^[]) |> select([e], e.x) |> plan()
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (1=0)}
+
+    query = Schema |> where([e], e.y == 1 and e.x in ^[]) |> select([e], e.x) |> plan()
+    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 WHERE ((s0."y" = 1) AND 1=0)}
   end
 
   test "in with a literal list" do
@@ -1578,7 +1600,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     assert all(query) ==
              ~s{SELECT 1 FROM "schema" AS s0 INNER JOIN "schema2" AS s1 ON s0."x" = s1."z" } <>
-               ~s{INNER JOIN "schema" AS s2 ON 1}
+               ~s{INNER JOIN "schema" AS s2 ON 1=1}
   end
 
   test "join with hints" do
@@ -1628,7 +1650,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     assert all(query) ==
              ~s{SELECT s1."x" FROM "comments" AS c0 } <>
-               ~s{INNER JOIN (SELECT sp0."x" AS "x", sp0."y" AS "y" FROM "posts" AS sp0 WHERE (sp0."title" = ?)) AS s1 ON 1}
+               ~s{INNER JOIN (SELECT sp0."x" AS "x", sp0."y" AS "y" FROM "posts" AS sp0 WHERE (sp0."title" = ?)) AS s1 ON 1=1}
 
     posts =
       subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, z: r.y}))
@@ -1641,7 +1663,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     assert all(query) ==
              ~s{SELECT s1."x", s1."z" FROM "comments" AS c0 } <>
-               ~s{INNER JOIN (SELECT sp0."x" AS "x", sp0."y" AS "z" FROM "posts" AS sp0 WHERE (sp0."title" = ?)) AS s1 ON 1}
+               ~s{INNER JOIN (SELECT sp0."x" AS "x", sp0."y" AS "z" FROM "posts" AS sp0 WHERE (sp0."title" = ?)) AS s1 ON 1=1}
 
     posts =
       subquery(
@@ -1659,7 +1681,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     assert all(query) ==
              ~s{SELECT s1."title" FROM "comments" AS c0 } <>
-               ~s{INNER JOIN (SELECT sp0."title" AS "title" FROM "posts" AS sp0 WHERE (sp0."title" = c0."subtitle")) AS s1 ON 1}
+               ~s{INNER JOIN (SELECT sp0."title" AS "title" FROM "posts" AS sp0 WHERE (sp0."title" = c0."subtitle")) AS s1 ON 1=1}
   end
 
   test "join with prefix" do
@@ -1706,7 +1728,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
     assert all(query) ==
              ~s{SELECT s0."id", ? FROM "schema" AS s0 INNER JOIN } <>
-               ~s{(SELECT * FROM schema2 AS s2 WHERE s2.id = s0."x" AND s2.field = ?) AS f1 ON 1 } <>
+               ~s{(SELECT * FROM schema2 AS s2 WHERE s2.id = s0."x" AND s2.field = ?) AS f1 ON 1=1 } <>
                ~s{WHERE ((s0."id" > 0) AND (s0."id" < ?))}
   end
 
@@ -1732,7 +1754,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
       |> plan()
 
     assert all(query) ==
-             ~s{SELECT s0."id", s1."id" FROM "schema" AS s0 LEFT OUTER JOIN "schema2" AS s1 ON 1}
+             ~s{SELECT s0."id", s1."id" FROM "schema" AS s0 LEFT OUTER JOIN "schema2" AS s1 ON 1=1}
   end
 
   test "lateral join with fragment" do
@@ -1806,7 +1828,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     query = plan(query)
 
     assert all(query) ==
-             "SELECT s0.\"id\", s2.\"id\" FROM \"schema\" AS s0 INNER JOIN \"schema2\" AS s1 ON 1 INNER JOIN \"schema2\" AS s2 ON 1"
+             "SELECT s0.\"id\", s2.\"id\" FROM \"schema\" AS s0 INNER JOIN \"schema2\" AS s1 ON 1=1 INNER JOIN \"schema2\" AS s2 ON 1=1"
   end
 
   describe "query interpolation parameters" do
@@ -1817,7 +1839,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
       assert all(query) ==
                ~s{SELECT s0."x", s0."y" FROM "schema" AS s0 INNER JOIN } <>
                  ~s{(SELECT ss0."x" AS "x", ss0."y" AS "y" FROM "schema" AS ss0) } <>
-                 ~s{AS s1 ON 1}
+                 ~s{AS s1 ON 1=1}
     end
 
     test "self join on subquery with fragment" do
@@ -1827,7 +1849,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
       assert all(query) ==
                ~s{SELECT downcase(?) FROM "schema" AS s0 INNER JOIN } <>
                  ~s{(SELECT downcase(?) AS "string" FROM "schema" AS ss0) } <>
-                 ~s{AS s1 ON 1}
+                 ~s{AS s1 ON 1=1}
     end
 
     test "join on subquery with simple select" do
@@ -1842,7 +1864,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
 
       assert all(query) ==
                ~s{SELECT ? FROM "schema" AS s0 INNER JOIN } <>
-                 ~s{(SELECT ? AS "x", ? AS "w" FROM "schema" AS ss0) AS s1 ON 1 } <>
+                 ~s{(SELECT ? AS "x", ? AS "w" FROM "schema" AS ss0) AS s1 ON 1=1 } <>
                  ~s{WHERE (s0."x" = ?)}
     end
   end
@@ -2003,7 +2025,7 @@ defmodule Ecto.Adapters.Firebird.ConnectionTest do
     query = insert(nil, "schema", [:foo, :bar], query, {:raise, [], []}, [:foo])
 
     assert query ==
-             ~s{INSERT INTO "schema" ("foo","bar") SELECT 3, s0."bar" FROM "schema" AS s0 WHERE (1) RETURNING "foo"}
+             ~s{INSERT INTO "schema" ("foo","bar") SELECT 3, s0."bar" FROM "schema" AS s0 WHERE (1=1) RETURNING "foo"}
   end
 
   test "update" do
