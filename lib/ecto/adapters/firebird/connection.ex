@@ -1008,7 +1008,7 @@ defmodule Ecto.Adapters.Firebird.Connection do
   defp join_on(:cross, true, _sources, _query), do: []
 
   defp join_on(_qual, expression, sources, query),
-    do: [" ON " | expr(expression, sources, query)]
+    do: [" ON " | pred_expr(expression, sources, query)]
 
   defp join_qual(:inner, _), do: " INNER JOIN "
   defp join_qual(:left, _), do: " LEFT OUTER JOIN "
@@ -1192,8 +1192,38 @@ defmodule Ecto.Adapters.Firebird.Connection do
   end
 
   defp paren_expr(expression, sources, query) do
-    [?(, expr(expression, sources, query), ?)]
+    [?(, pred_expr(expression, sources, query), ?)]
   end
+
+  # Firebird distinguishes boolean predicates from values: an integer literal
+  # is not a valid predicate, so "WHERE 0", "ON 1" or "x IN ()" rendered as "0"
+  # raise "Invalid usage of boolean expression" (SQLCODE -104). In predicate
+  # positions (WHERE/HAVING/ON, AND/OR/NOT operands, empty IN) these render as
+  # "1=1"/"1=0", which every Firebird version accepts. Value positions keep the
+  # integer form ("1"/"0"): a BOOLEAN expression in a select list only exists
+  # since Firebird 3.0, and the integer matches how this adapter stores booleans.
+  defp pred_expr(true, _sources, _query), do: "1=1"
+  defp pred_expr(false, _sources, _query), do: "1=0"
+
+  defp pred_expr(expression, sources, query) do
+    if empty_in?(expression),
+      do: "1=0",
+      else: expr(expression, sources, query)
+  end
+
+  defp op_to_pred(true, _sources, _query), do: "1=1"
+  defp op_to_pred(false, _sources, _query), do: "1=0"
+
+  defp op_to_pred(expression, sources, query) do
+    if empty_in?(expression),
+      do: "1=0",
+      else: op_to_binary(expression, sources, query)
+  end
+
+  defp empty_in?({:in, _, [_, []]}), do: true
+  defp empty_in?({:in, _, [_, "[]"]}), do: true
+  defp empty_in?({:in, _, [_, {:^, _, [_, 0]}]}), do: true
+  defp empty_in?(_), do: false
 
   ##
   ## Expression generation
@@ -1295,8 +1325,13 @@ defmodule Ecto.Adapters.Firebird.Connection do
     [expr(arg, sources, query) | " IS NULL"]
   end
 
+  def expr({op, _, [left, right]}, sources, query) when op in [:and, :or] do
+    operator = if op == :and, do: " AND ", else: " OR "
+    [op_to_pred(left, sources, query), operator | op_to_pred(right, sources, query)]
+  end
+
   def expr({:not, _, [expression]}, sources, query) do
-    ["NOT (", expr(expression, sources, query), ?)]
+    ["NOT (", pred_expr(expression, sources, query), ?)]
   end
 
   def expr({:filter, _, [agg, filter]}, sources, query) do
