@@ -43,5 +43,9 @@ defmodule EctoFirebird.Integration.Migration do
     create table(:settings) do
       add(:properties, :map)
     end
+
+    create table(:measurements) do
+      add(:amount, :"double precision")
+    end
   end
 end

@@ -21,6 +21,7 @@ defmodule Ecto.Adapters.Firebird.Codec do
   def json_decode(_), do: :error
 
   def float_decode(nil), do: {:ok, nil}
+  def float_decode(x) when is_float(x), do: {:ok, x}
   def float_decode(%Decimal{} = decimal), do: {:ok, Decimal.to_float(decimal)}
   def float_decode(x) when is_integer(x), do: {:ok, x / 1}
   def float_decode(_), do: :error
